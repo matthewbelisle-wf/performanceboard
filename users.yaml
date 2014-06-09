@@ -1,0 +1,8 @@
+# Authorized users
+# 
+# Specify list of authorized email addresses if you want access restrictions; otherwise, no
+# authorization is required.
+# 
+# - george@gmail.com
+# - watanabe@webfilings.com
+# - fred@facebook.com

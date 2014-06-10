@@ -17,16 +17,18 @@ $ curl -X POST -d '' http://performanceboard-public.appspot.com/api/
 }
 ```
 
-Post a metric to the board.
+Post some metrics to the board.
 
 ```
-$ cat metric.json
-{
-  "key": "hotspot",
-  "start": 1401763961.864,
-  "end": 1401763962.567
-}
-$ curl -X POST -d @metric.json http://performanceboard-public.appspot.com/api/ahlzfnBlcmZvcm1hbmNlYm9hcmQtcHVibGljchILEgVCb2FyZBiAgICAmc6UCgw
+$ cat metrics.json
+[
+  {
+    "key": "hotspot",
+    "start": 1401763961.864,
+    "end": 1401763962.567
+  }
+]
+$ curl -X POST -d @metrics.json http://performanceboard-public.appspot.com/api/ahlzfnBlcmZvcm1hbmNlYm9hcmQtcHVibGljchILEgVCb2FyZBiAgICAmc6UCgw
 ```
 
 Open the board in a browser.  (TODO: Actually make the client)

@@ -50,6 +50,11 @@ Serve the app locally from the root directory.
 
 ```
 $ go get ./app/
+```
+
+Ignore the errors about [unrecognized import paths for appengine](http://stackoverflow.com/questions/22674307/go-get-package-appengine-unrecognized-import-path-appengine).
+
+```
 $ goapp serve .
 ```
 

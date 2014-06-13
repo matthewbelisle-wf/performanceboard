@@ -8,8 +8,6 @@
 package performanceboard
 
 import (
-	"appengine"
-	"appengine/datastore"
 	"github.com/gorilla/mux"
 	"io/ioutil"
 	"net/http"
@@ -33,40 +31,4 @@ func client(writer http.ResponseWriter, request *http.Request) {
 	}
 	writer.Header().Set("content-type", "text/html")
 	writer.Write(indexHtml)
-}
-
-func createBoard(writer http.ResponseWriter, request *http.Request) {
-	context := appengine.NewContext(request)
-	board := Board{}
-	key := CreateBoard(&board, context)
-	api, _ := router.Get("createPost").URL("board", key.Encode())
-	JsonResponse{
-		"board": key.Encode(),
-		"api": AbsURL(*api, request),
-	}.Write(writer)
-}
-
-func createPost(writer http.ResponseWriter, request *http.Request) {
-	// Checks that the key is valid
-	encodedBoardKey := mux.Vars(request)["board"]
-	boardKey, err := datastore.DecodeKey(encodedBoardKey)
-	if err != nil || boardKey.Kind() != BoardKind {
-		http.Error(writer, "Invalid key: "+encodedBoardKey, http.StatusBadRequest)
-		return
-	}
-
-	defer request.Body.Close()
-	body, _ := ioutil.ReadAll(request.Body)
-	post := Post{
-		BoardKey: boardKey,
-		Body:     string(body),
-	}
-	context := appengine.NewContext(request)
-	key := CreatePost(&post, context)
-	JsonResponse{
-		"key":       key.Encode(),
-		"board":     AbsURL(*request.URL, request),
-		"body":      post.Body,
-		"timestamp": post.Timestamp.Unix(),
-	}.Write(writer)
 }

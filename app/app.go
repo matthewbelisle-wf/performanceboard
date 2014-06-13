@@ -21,7 +21,7 @@ func init() {
 	router = mux.NewRouter()
 	router.HandleFunc("/api/{board}", createPost).Name("createPost").Methods("POST")
 	router.HandleFunc("/api/", createBoard).Name("createBoard").Methods("POST")
-	router.HandleFunc("/{board:.*}", client).Name("client")
+	router.HandleFunc("/", client)
 	http.Handle("/", router)
 }
 
@@ -40,11 +40,9 @@ func createBoard(writer http.ResponseWriter, request *http.Request) {
 	board := Board{}
 	key := CreateBoard(&board, context)
 	api, _ := router.Get("createPost").URL("board", key.Encode())
-	client, _ := router.Get("client").URL("board", key.Encode())
 	JsonResponse{
-		"key": key.Encode(),
+		"board": key.Encode(),
 		"api": AbsURL(*api, request),
-		"client": AbsURL(*client, request),
 	}.Write(writer)
 }
 

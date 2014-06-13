@@ -15,6 +15,8 @@ handlers:
   script: _go_app
 
 skip_files:
-- ^(.*/)?README\.txt$
-- ^(.*/)?LICENSE\.txt$
+- ^(.*/)?#.*#$
+- ^(.*/)?.*~$
+- ^(.*/)?.*\.py[co]$
+- ^(.*/)?.*/RCS/.*$
 - ^(.*/)?\..*$

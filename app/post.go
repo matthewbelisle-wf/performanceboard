@@ -33,7 +33,7 @@ func createPost(writer http.ResponseWriter, request *http.Request) {
 		return
 	}
 	post := Post{
-		Body: string(body),
+		Body:      string(body),
 		Timestamp: time.Now(),
 	}
 	context := appengine.NewContext(request)
@@ -43,9 +43,6 @@ func createPost(writer http.ResponseWriter, request *http.Request) {
 		return
 	}
 	JsonResponse{
-		"post":       key.Encode(),
-		"board":     AbsURL(*request.URL, request),
-		"body":      post.Body,
-		"timestamp": post.Timestamp.Unix(),
+		"post": key.Encode(),
 	}.Write(writer)
 }

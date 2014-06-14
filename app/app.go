@@ -19,7 +19,7 @@ func init() {
 	router = mux.NewRouter()
 	router.HandleFunc("/api/{board}", createPost).Name("createPost").Methods("POST")
 	router.HandleFunc("/api/", createBoard).Name("createBoard").Methods("POST")
-	router.HandleFunc("/{board:.*}", client).Name("client")
+	router.HandleFunc("/{client:.*}", client).Name("client")
 	http.Handle("/", router)
 }
 

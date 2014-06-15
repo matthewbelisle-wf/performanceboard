@@ -11,13 +11,29 @@
   </head>
   <body>
     <div class="navbar navbar-default" role="navigation">
-      <div class="container">
+      <div class="container-fluid">
         <div class="navbar-header">
           <a class="navbar-brand" href="/">PerformanceBoard</a>
         </div>
-        <form class="navbar-form navbar-right">
-          <button type="button" id="create-board" class="btn btn-primary">+ New Board</button>
-        </form>
+      </div>
+    </div>
+    <div class="container-fluid">
+      <div class="row">
+        <div class="col-xs-3">
+          <div class="panel panel-default">
+            <div class="panel-heading">
+              <img src="/static/github.png" alt="github.png"> Docs
+            </div>
+            <ul class="nav nav-stacked">
+              <li><a href="https://github.com/mgbelisle/performanceboard/blob/master/README.md">PerformanceBoard</a></li>
+              <li><a href="https://github.com/mgbelisle/performanceboard-py/blob/master/README.md">Python Plugin</a></li>
+              <li><a href="https://github.com/mgbelisle/performanceboard-js/blob/master/README.md">JavaScript Plugin</a></li>
+            </ul>
+          </div>
+        </div>
+        <div class="col-xs-9 text-center">
+          <button id="create-board" class="btn btn-primary btn-lg">+ New Board</button>
+        </div>
       </div>
     </div>
 

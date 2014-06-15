@@ -8,14 +8,7 @@ Simple Usage
 
 Create a board if you don't have your own.
 
-```
-$ curl -X POST -d '' http://performanceboard-public.appspot.com/api/
-{
-  "api": "http://performanceboard-public.appspot.com/api/ahlzfnBlcmZvcm1hbmNlYm9hcmQtcHVibGljchILEgVCb2FyZBiAgICAmc6UCgw",
-  "client": "http://performanceboard-public.appspot.com/ahlzfnBlcmZvcm1hbmNlYm9hcmQtcHVibGljchILEgVCb2FyZBiAgICAmc6UCgw",
-  "key": "ahlzfnBlcmZvcm1hbmNlYm9hcmQtcHVibGljchILEgVCb2FyZBiAgICAmc6UCgw"
-}
-```
+http://performanceboard-public.appspot.com/ > `+ New Board`
 
 Post some metrics to the board.
 

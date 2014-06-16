@@ -8,7 +8,8 @@ Simple Usage
 
 Create a board if you don't have your own.
 
-http://performanceboard-public.appspot.com/ > `+ New Board`
+* Go to http://performanceboard-public.appspot.com/
+* Click `+ New Board`
 
 Post some metrics to the board.
 

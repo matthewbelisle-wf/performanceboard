@@ -12,11 +12,9 @@ import (
 const PostKind = "Post"
 
 type Post struct {
-	Body      string
-	Timestamp time.Time
+	Body      string    `datastore:",noindex"`
+	Timestamp time.Time `datastore:",noindex"`
 }
-
-// TODO: post.Board()
 
 func createPost(writer http.ResponseWriter, request *http.Request) {
 	// Checks that the key is valid

@@ -20,7 +20,7 @@ func createBoard(writer http.ResponseWriter, request *http.Request) {
 		board.UserID = u.ID
 	}
 	key, _ := datastore.Put(context, datastore.NewIncompleteKey(context, BoardKind, nil), &board)
-	api, _ := router.Get("createPost").URL("board", key.Encode())
+	api, _ := router.Get("board").URL("board", key.Encode())
 	JsonResponse{
 		"board": key.Encode(),
 		"api":   AbsURL(*api, request),

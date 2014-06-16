@@ -27,11 +27,15 @@ $('#create-board').click(function() {
 ///////////
 
 if (getBoardKey()) {
+    $('#create-board-block').hide();
+} else {
+    $('#create-board-block').show();
+}
+
+if (getBoardKey()) {
     var api = window.location.origin + '/api/' + getBoardKey();
     $('#api').text(api).attr('href', api);
     $('#api-block').show();
-    $('#create-board-block').hide();
 } else {
     $('#api-block').hide();    
-    $('#create-board-block').show();
 }

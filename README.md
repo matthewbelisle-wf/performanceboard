@@ -24,9 +24,7 @@ $ cat metrics.json
 $ curl -X POST -d @metrics.json http://performanceboard-public.appspot.com/api/ahlzfnBlcmZvcm1hbmNlYm9hcmQtcHVibGljchILEgVCb2FyZBiAgICAmc6UCgw
 ```
 
-Open the board in a browser.  (TODO: Actually make the client)
-
-http://performanceboard-public.appspot.com/ahlzfnBlcmZvcm1hbmNlYm9hcmQtcHVibGljchILEgVCb2FyZBiAgICAmc6UCgw
+Watch the metrics show up on the board.
 
 Plugins
 -------

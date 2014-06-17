@@ -31,7 +31,7 @@ func getMetrics(writer http.ResponseWriter, request *http.Request) {
 		http.Error(writer, err.Error(), http.StatusBadRequest)
 		return
 	}
-	board.WriteJson(writer, request)
+	board.ServeHTTP(writer, request)
 }
 
 func postMetrics(writer http.ResponseWriter, request *http.Request) {

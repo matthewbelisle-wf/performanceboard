@@ -14,7 +14,7 @@ type Board struct {
 	UserID string
 }
 
-func (board *Board) WriteJson(writer http.ResponseWriter, request *http.Request) {
+func (board *Board) ServeHTTP(writer http.ResponseWriter, request *http.Request) {
 	api, _ := router.Get("board").URL("board", board.Key.Encode())
 	JsonResponse{
 		"board": board.Key.Encode(),
@@ -31,5 +31,5 @@ func createBoard(writer http.ResponseWriter, request *http.Request) {
 		board.UserID = u.ID
 	}
 	board.Key, _ = datastore.Put(context, datastore.NewIncompleteKey(context, BoardKind, nil), &board)
-	board.WriteJson(writer, request)
+	board.ServeHTTP(writer, request)
 }

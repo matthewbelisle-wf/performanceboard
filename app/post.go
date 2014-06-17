@@ -12,8 +12,19 @@ import (
 const PostKind = "Post"
 
 type Post struct {
-	Body      string    `datastore:",noindex"`
-	Timestamp time.Time `datastore:",noindex"`
+	Key       *datastore.Key `datastore:"-"`
+	Body      string         `datastore:",noindex"`
+	Timestamp time.Time      `datastore:",noindex"`
+}
+
+func (post *Post) WriteJson(writer http.ResponseWriter, request *http.Request) {
+	boardKey := post.Key.Parent()
+	api, _ := router.Get("board").URL("board", boardKey.Encode())
+	JsonResponse{
+		"api": AbsURL(*api, request),
+		"post": post.Key.Encode(),
+		"board": boardKey.Encode(),
+	}.Write(writer)
 }
 
 func createPost(writer http.ResponseWriter, request *http.Request) {
@@ -35,12 +46,10 @@ func createPost(writer http.ResponseWriter, request *http.Request) {
 		Timestamp: time.Now(),
 	}
 	context := appengine.NewContext(request)
-	key, err := datastore.Put(context, datastore.NewIncompleteKey(context, PostKind, boardKey), &post)
+	post.Key, err = datastore.Put(context, datastore.NewIncompleteKey(context, PostKind, boardKey), &post)
 	if err != nil {
 		http.Error(writer, err.Error(), http.StatusBadRequest)
 		return
 	}
-	JsonResponse{
-		"post": key.Encode(),
-	}.Write(writer)
+	post.WriteJson(writer, request)
 }

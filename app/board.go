@@ -45,7 +45,6 @@ func createBoard(writer http.ResponseWriter, request *http.Request) {
 	if u := user.Current(context); u != nil {
 		board.UserID = u.ID
 	}
-	key, _ := datastore.Put(context, datastore.NewIncompleteKey(context, BoardKind, nil), &board)
-	board.Key = key
+	board.Key, _ = datastore.Put(context, datastore.NewIncompleteKey(context, BoardKind, nil), &board)
 	board.WriteJson(writer, request)
 }

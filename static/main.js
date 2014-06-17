@@ -40,7 +40,6 @@ if (getBoardKey()) {
     $('#api').hide();    
 }
 
-console.log(getBoardKey());
 if (getBoardKey()) {
     $('#chart-block').show();
     var graph = new Rickshaw.Graph({
@@ -60,7 +59,6 @@ if (getBoardKey()) {
             }
         ]
     });
-    console.log(graph);
     graph.render();
 } else {
     $('#chart-block').hide();

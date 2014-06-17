@@ -71,7 +71,7 @@ By specifying `children`, metrics can be nested arbitrarily deep.
              "end": 1401763964.467
            }
         ]
-      },
+      }
     ]
   }
 ]

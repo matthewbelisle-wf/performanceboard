@@ -34,12 +34,13 @@ if (getBoardKey()) {
 
 if (getBoardKey()) {
     var api = window.location.origin + '/api/' + getBoardKey();
-    $('#api').text(api).attr('href', api);
-    $('#api-block').show();
+    $('#api').attr('href', api);
+    $('#api').show();
 } else {
-    $('#api-block').hide();    
+    $('#api').hide();    
 }
 
+console.log(getBoardKey());
 if (getBoardKey()) {
     $('#chart-block').show();
     var graph = new Rickshaw.Graph({
@@ -59,6 +60,7 @@ if (getBoardKey()) {
             }
         ]
     });
+    console.log(graph);
     graph.render();
 } else {
     $('#chart-block').hide();

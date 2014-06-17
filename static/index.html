@@ -16,6 +16,9 @@
           <img class = "navbar-brand" src="/static/img/88.png" alt="88">
           <a class="navbar-brand" href="/">PerformanceBoard</a>
         </div>
+        <form class="navbar-form navbar-right">
+          <a href="#" id="api" class="btn btn-primary" role="button">API &raquo;</a>
+        </form>
       </div>
     </div>
     <div class="container-fluid">
@@ -34,12 +37,11 @@
             </div>
           </div>
         </div>
-        <div class="col-md-9" id="board">
-          <p id="api-block">API: <a href="#" id="api"></a></p>
-          <div id="create-board-block" class="text-center">
+        <div id="board" class="col-md-9 text-center">
+          <div id="create-board-block">
             <button id="create-board" class="btn btn-primary btn-lg">+ New Board</button>
           </div>
-          <div id="chart-block" class="text-center">
+          <div id="chart-block">
             <div id="chart"></div>
           </div>
         </div>

@@ -58,4 +58,5 @@ func postMetrics(writer http.ResponseWriter, request *http.Request) {
 		http.Error(writer, err.Error(), http.StatusBadRequest)
 		return
 	}
+	digestPost.Call(context, post.Key)
 }

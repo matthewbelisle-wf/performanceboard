@@ -9,13 +9,6 @@ import (
 	"time"
 )
 
-type Metric struct {
-	DsKey *datastore.Key `datastore:"-"`
-	Key   string
-	Start time.Time
-	End   time.Time
-}
-
 // HTTP handlers
 
 func getMetrics(writer http.ResponseWriter, request *http.Request) {
@@ -34,7 +27,7 @@ func getMetrics(writer http.ResponseWriter, request *http.Request) {
 	board.ServeHTTP(writer, request)
 }
 
-func postMetrics(writer http.ResponseWriter, request *http.Request) {
+func postMetric(writer http.ResponseWriter, request *http.Request) {
 	// Checks that the key is valid
 	encodedBoardKey := mux.Vars(request)["board"]
 	boardKey, err := datastore.DecodeKey(encodedBoardKey)

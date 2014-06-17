@@ -21,8 +21,8 @@ func (post *Post) WriteJson(writer http.ResponseWriter, request *http.Request) {
 	boardKey := post.Key.Parent()
 	api, _ := router.Get("board").URL("board", boardKey.Encode())
 	JsonResponse{
-		"api": AbsURL(*api, request),
-		"post": post.Key.Encode(),
+		"api":   AbsURL(*api, request),
+		"post":  post.Key.Encode(),
 		"board": boardKey.Encode(),
 	}.Write(writer)
 }

@@ -12,69 +12,58 @@ Create a board if you don't have your own.
 * Click `+ New Board`
 
 The API for the board will appear on the right side of the navbar.  Post some metrics to the API.
-See the [Metrics](#metrics) section for more info on metrics' structure.
+See the [Metrics](#metrics) section for more info on a metric's structure.
 
 ```json
-[
-  {
-    "key": "hotspot",
-    "start": 1401763961.864,
-    "end": 1401763962.567
-  }
-]
+{
+  "key": "hotspot",
+  "start": 1401763961.864,
+  "end": 1401763962.567
+}
 ```
 
-Watch the metrics show up on the board in real-time.
+Watch the metric show up on the board in real-time.
 
 Metrics<a name="metrics"></a>
 -------
 
-Metrics are a list of objects with `key`, `start`, `end`, and optionally `children`.
+A metric is an object with `key`, `start`, `end`, and optionally `children`.
 
 ```json
-[
-  {
-    "key": "hotspot",
-    "start": 1401763961.864,
-    "end": 1401763962.567
-  },
-  {
-    "key": "hotspot2",
-    "start": 1401763971.864,
-    "end": 1401763972.567
-  }
-]
+{
+  "key": "hotspot",
+  "start": 1401763961.864,
+  "end": 1401763962.567
+}
 ```
 
 By specifying `children`, metrics can be nested arbitrarily deep.
 
 ```json
-[
-  {
-    "key": "hotspot",
-    "start": 1401763961.864,
-    "end": 1401763972.567,
-    "children": [
-      {
-        "key": "sub_hotspot1",
-        "start": 1401763961.864,
-        "end": 1401763962.567
-      },
-      {
-        "key": "sub_hotspot2",
-        "start": 1401763963.864,
-        "end": 1401763964.567,
-        "children": [
-           {
-             "key": "sub_sub_hostspot",
-             "start": 1401763963.964,
-             "end": 1401763964.467
-           }
-        ]
-      }
-    ]
-  }
-]
+{
+  "key": "hotspot",
+  "start": 1401763961.864,
+  "end": 1401763972.567,
+  "children": [
+    {
+      "key": "sub_hotspot1",
+      "start": 1401763961.864,
+      "end": 1401763962.567
+    },
+    {
+      "key": "sub_hotspot2",
+      "start": 1401763963.864,
+      "end": 1401763964.567,
+      "children": [
+         {
+           "key": "sub_sub_hostspot",
+           "start": 1401763963.964,
+           "end": 1401763964.467
+         }
+      ]
+    }
+  ]
+}
 ```
 
 Plugins

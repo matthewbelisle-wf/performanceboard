@@ -17,8 +17,8 @@ See the [Metrics](#metrics) section for more info on a metric's structure.
 ```json
 {
   "namespace": "hotspot",
-  "start": "2014-06-19T01:10:20.345287",
-  "end": "2014-06-19T01:10:21.345287"
+  "start": "2014-06-19T01:10:20.345287Z",
+  "end": "2014-06-19T01:10:21.345287Z"
 }
 ```
 
@@ -33,8 +33,8 @@ A metric is an object with `namespace`, `start`, `end`, and optionally `children
 ```json
 {
   "namespace": "hotspot",
-  "start": "2014-06-19T01:10:20.345287",
-  "end": "2014-06-19T01:10:21.345287"
+  "start": "2014-06-19T01:10:20.345287Z",
+  "end": "2014-06-19T01:10:21.345287Z"
 }
 ```
 
@@ -43,8 +43,8 @@ By specifying `children`, metrics can be nested arbitrarily deep.
 ```json
 {
   "namespace": "hotspot",
-  "start": "2014-06-19T01:10:20.345287",
-  "end": "2014-06-19T01:10:30.345287",
+  "start": "2014-06-19T01:10:20.345287Z",
+  "end": "2014-06-19T01:10:30.345287Z",
   "meta": {
       "mem_footprint": "10MB",
       "hostname": "foobar.com"
@@ -52,18 +52,18 @@ By specifying `children`, metrics can be nested arbitrarily deep.
   "children": [
     {
       "namespace": "sub_hotspot1",
-      "start": "2014-06-19T01:10:21.345287",
-      "end": "2014-06-19T01:10:22.345287"
+      "start": "2014-06-19T01:10:21.345287Z",
+      "end": "2014-06-19T01:10:22.345287Z"
     },
     {
       "namespace": "sub_hotspot2",
-      "start": "2014-06-19T01:10:23.345287",
-      "end": "2014-06-19T01:10:24.345287",
+      "start": "2014-06-19T01:10:23.345287Z",
+      "end": "2014-06-19T01:10:24.345287Z",
       "children": [
          {
            "namespace": "sub_sub_hostspot",
-           "start": "2014-06-19T01:10:23.445287",
-           "end": "2014-06-19T01:10:23.545287"
+           "start": "2014-06-19T01:10:23.445287Z",
+           "end": "2014-06-19T01:10:23.545287Z"
          }
       ]
     }

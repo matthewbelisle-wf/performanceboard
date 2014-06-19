@@ -9,13 +9,6 @@ import (
 	"time"
 )
 
-type Metric struct {
-	DsKey *datastore.Key `datastore:"-"`
-	Key   string
-	Start time.Time
-	End   time.Time
-}
-
 // HTTP handlers
 
 func getMetrics(writer http.ResponseWriter, request *http.Request) {
@@ -58,5 +51,5 @@ func postMetrics(writer http.ResponseWriter, request *http.Request) {
 		http.Error(writer, err.Error(), http.StatusBadRequest)
 		return
 	}
-	digestPost.Call(context, post.Key)
+	digestPost.Call(context, post.Key.Encode())
 }

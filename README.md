@@ -16,7 +16,7 @@ See the [Metrics](#metrics) section for more info on a metric's structure.
 
 ```json
 {
-  "key": "hotspot",
+  "namespace": "hotspot",
   "start": 1401763961.864,
   "end": 1401763962.567
 }
@@ -27,11 +27,11 @@ Watch the metric show up on the board in real-time.
 Metrics<a name="metrics"></a>
 -------
 
-A metric is an object with `key`, `start`, `end`, and optionally `children`.
+A metric is an object with `namespace`, `start`, `end`, and optionally `children`.
 
 ```json
 {
-  "key": "hotspot",
+  "namespace": "hotspot",
   "start": 1401763961.864,
   "end": 1401763962.567
 }
@@ -41,22 +41,22 @@ By specifying `children`, metrics can be nested arbitrarily deep.
 
 ```json
 {
-  "key": "hotspot",
+  "namespace": "hotspot",
   "start": 1401763961.864,
   "end": 1401763972.567,
   "children": [
     {
-      "key": "sub_hotspot1",
+      "namespace": "sub_hotspot1",
       "start": 1401763961.864,
       "end": 1401763962.567
     },
     {
-      "key": "sub_hotspot2",
+      "namespace": "sub_hotspot2",
       "start": 1401763963.864,
       "end": 1401763964.567,
       "children": [
          {
-           "key": "sub_sub_hostspot",
+           "namespace": "sub_sub_hostspot",
            "start": 1401763963.964,
            "end": 1401763964.467
          }

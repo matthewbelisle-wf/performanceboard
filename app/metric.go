@@ -27,6 +27,7 @@ func getMetrics(writer http.ResponseWriter, request *http.Request) {
 	board.ServeHTTP(writer, request)
 }
 
+// TODO memcache the board entity and validate boardKey against it
 func postMetric(writer http.ResponseWriter, request *http.Request) {
 	// Checks that the key is valid
 	encodedBoardKey := mux.Vars(request)["board"]
@@ -51,5 +52,5 @@ func postMetric(writer http.ResponseWriter, request *http.Request) {
 		http.Error(writer, err.Error(), http.StatusBadRequest)
 		return
 	}
-	digestPost.Call(context, post.Key)
+	digestPost.Call(context, post.Key.Encode())
 }

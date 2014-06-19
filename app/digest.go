@@ -32,6 +32,9 @@ type Metric struct {
 	End       time.Time      // UTC
 }
 
+// The Taxonomy table defines namespace relationships for fast lookup
+// Given static assignment of a namespace to a measurement on the client
+// this table should not continue to grow in size for repeated Posts.
 const TaxonomyKind = "Taxonomy"
 
 type Taxonomy struct {
@@ -41,9 +44,6 @@ type Taxonomy struct {
 	Childspace string         // a single child namespace of Namespace field
 }
 
-// TODO - each call to storeMetric should return the fully formed namespace it stored to.
-// TODO - write to the namespace taxonomy table
-// Key(BoardKey, namespace, child-namespace), BoardKey, namespace, child-namespace
 func storeMetric(c appengine.Context, boardKey string, postKey string, data PostBody, ancestor *Metric) (string, error) {
 	metric := Metric{}
 	metric.Namespace = data.Namespace
@@ -75,7 +75,7 @@ func storeMetric(c appengine.Context, boardKey string, postKey string, data Post
 		if childNamespace, err := storeMetric(c, boardKey, postKey, child, &metric); err == nil {
 			storeTaxonomy(c, boardKey, metric.Namespace, childNamespace)
 		} else {
-			// Log
+			c.Errorf("Error storing Taxonomy:%v", err)
 		}
 	}
 	return metric.Namespace, nil
@@ -88,8 +88,7 @@ func storeTaxonomy(c appengine.Context, boardKey string, parentNamespace string,
 	taxonomy.BoardKey = boardKey
 	taxonomy.Namespace = parentNamespace
 	taxonomy.Childspace = childNamespace
-	_, err := datastore.Put(c, taxonomy.Key, &taxonomy)
-	if err != nil {
+	if _, err := datastore.Put(c, taxonomy.Key, &taxonomy); err != nil {
 		c.Errorf("Error on Taxonomy Put:%v", err)
 	}
 }
@@ -110,5 +109,7 @@ var digestPost = delay.Func("key", func(c appengine.Context, postKeyString strin
 	boardKeyString := postKey.Parent().Encode()
 	if namespace, err := storeMetric(c, boardKeyString, postKeyString, body, nil); err == nil {
 		storeTaxonomy(c, boardKeyString, "", namespace)
+	} else {
+		c.Errorf("Error storing Taxonomy:%v", err)
 	}
 })

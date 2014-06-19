@@ -9,7 +9,7 @@ import (
 	"time"
 )
 
-/* data package parsing structure, not stored to disk. */
+// data package parsing structure, not stored to disk. 
 type PostBody struct {
 	Namespace string `json:"namespace"`
 	Start     time.Time `json:"start"`
@@ -18,11 +18,10 @@ type PostBody struct {
 	Children  []PostBody `json:"children"`
 }
 
-/* A Metric is a namespaced measurement. A metric's parent (for Ancestor queries)
-is the metric that contained it in the origional Post. Therefore, a Metric
-with the namespace 'X.Y.Z' will have an Ancestor Metric with a namespace
-of 'X.Y'.
-*/
+// A Metric is a namespaced measurement. A metric's parent (for Ancestor queries)
+// is the metric that contained it in the origional Post. Therefore, a Metric
+// with the namespace 'X.Y.Z' will have an Ancestor Metric with a namespace
+// of 'X.Y'. 
 const MetricKind = "Metric"
 
 type Metric struct {
@@ -37,7 +36,7 @@ func storeMetric(c appengine.Context, postKey string, data PostBody, ancestor *M
 	metric := Metric{}
 	metric.Namespace = data.Namespace
 	if ancestor != nil {
-		metric.Namespace = ancestor.Namespace + metric.Namespace
+		metric.Namespace = fmt.Sprintf("%s.%s", ancestor.Namespace, metric.Namespace)
 	}
 	meta, err := json.Marshal(data.Meta)
 	if err != nil {
@@ -77,10 +76,6 @@ var digestPost = delay.Func("key", func(c appengine.Context, postKey string) {
 		return
 	}
 
-    c.Infof("namespace:%s", body.Namespace)
-    c.Infof("body:%v", body)
-    c.Infof("post:%v", post)
-    c.Infof("postBody:%v", post.Body)
-
+    // enter the recursive storage routine
 	storeMetric(c, postKey, body, nil)
 })

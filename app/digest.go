@@ -50,13 +50,15 @@ func storeMetric(c appengine.Context, postKey string, data PostBody, ancestor *M
 	// compose an idempotent key for this data (allows Post data to be digested repeatedly)
 	keyID := fmt.Sprintf("%s:%s:%v:%v", postKey, metric.Namespace, data.start, data.end)
 	if ancestor == nil {
-		key := datastore.NewKey(c, MetricKind, keyID, 0, nil)
-		_, err = datastore.Put(c, key, metric)
+		metric.Key = datastore.NewKey(c, MetricKind, keyID, 0, nil)
 	} else {
-		key := datastore.NewKey(c, MetricKind, keyID, 0, ancestor.Key)
-		_, err = datastore.Put(c, key, metric)
+		metric.Key = datastore.NewKey(c, MetricKind, keyID, 0, ancestor.Key)
 	}
-
+	_, err = datastore.Put(c, metric.Key, &metric)
+    if err != nil {
+        c.Infof("Error on Put:%v", err)
+        return
+    }
 	// recursive storage for child objects to the same entity table
 	for _, child := range data.children {
 		storeMetric(c, postKey, child, &metric)
@@ -73,6 +75,10 @@ var digestPost = delay.Func("key", func(c appengine.Context, postKey string) {
 	if err := json.Unmarshal([]byte(post.Body), &body); err != nil {
 		return
 	}
+    c.Infof("namespace:%s", body.namespace)
+    c.Infof("body:%v", body)
+    c.Infof("post:%v", post)
+    c.Infof("postBody:%v", post.Body)
 
 	storeMetric(c, postKey, body, nil)
 })

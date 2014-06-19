@@ -17,8 +17,8 @@ See the [Metrics](#metrics) section for more info on a metric's structure.
 ```json
 {
   "namespace": "hotspot",
-  "start": 1401763961.864,
-  "end": 1401763962.567
+  "start": "2014-06-19T01:10:20.345287",
+  "end": "2014-06-19T01:10:21.345287"
 }
 ```
 

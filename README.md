@@ -27,7 +27,8 @@ Watch the metric show up on the board in real-time.
 Metrics<a name="metrics"></a>
 -------
 
-A metric is an object with `namespace`, `start`, `end`, and optionally `children`.
+A metric is an object with `namespace`, `start`, `end`, and optionally `children`.  Timestamps like
+`start` and `end` must be strings formatted according to [RFC 3339](http://www.ietf.org/rfc/rfc3339.txt).
 
 ```json
 {

@@ -11,11 +11,11 @@ import (
 
 /* data package parsing structure, not stored to disk. */
 type PostBody struct {
-	namespace string
-	start     time.Time
-	end       time.Time
-	meta      map[string]interface{}
-	children  []PostBody
+	Namespace string `json:"namespace"`
+	Start     time.Time `json:"start"`
+	End       time.Time `json:"end"`
+	Meta      map[string]interface{} `json:"meta"`
+	Children  []PostBody `json:"children"`
 }
 
 /* A Metric is a namespaced measurement. A metric's parent (for Ancestor queries)
@@ -35,20 +35,20 @@ type Metric struct {
 
 func storeMetric(c appengine.Context, postKey string, data PostBody, ancestor *Metric) {
 	metric := Metric{}
-	metric.Namespace = data.namespace
+	metric.Namespace = data.Namespace
 	if ancestor != nil {
 		metric.Namespace = ancestor.Namespace + metric.Namespace
 	}
-	meta, err := json.Marshal(data.meta)
+	meta, err := json.Marshal(data.Meta)
 	if err != nil {
 		c.Infof("failed to marshall metadata: %v", err)
 	}
 	metric.Meta = string(meta)
-	metric.Start = data.start
-	metric.End = data.end
+	metric.Start = data.Start
+	metric.End = data.End
 
 	// compose an idempotent key for this data (allows Post data to be digested repeatedly)
-	keyID := fmt.Sprintf("%s:%s:%v:%v", postKey, metric.Namespace, data.start, data.end)
+	keyID := fmt.Sprintf("%s:%s:%v:%v", postKey, metric.Namespace, data.Start, data.End)
 	if ancestor == nil {
 		metric.Key = datastore.NewKey(c, MetricKind, keyID, 0, nil)
 	} else {
@@ -60,7 +60,7 @@ func storeMetric(c appengine.Context, postKey string, data PostBody, ancestor *M
         return
     }
 	// recursive storage for child objects to the same entity table
-	for _, child := range data.children {
+	for _, child := range data.Children {
 		storeMetric(c, postKey, child, &metric)
 	}
 }
@@ -71,11 +71,13 @@ var digestPost = delay.Func("key", func(c appengine.Context, postKey string) {
 	if err := datastore.Get(c, key, &post); err != nil {
 		return
 	}
-	body := PostBody{}
-	if err := json.Unmarshal([]byte(post.Body), &body); err != nil {
+	body := PostBody{} 
+    if err := json.Unmarshal([]byte(post.Body), &body); err != nil {
+        c.Infof("Error in Unmarshal:%v", err)
 		return
 	}
-    c.Infof("namespace:%s", body.namespace)
+
+    c.Infof("namespace:%s", body.Namespace)
     c.Infof("body:%v", body)
     c.Infof("post:%v", post)
     c.Infof("postBody:%v", post.Body)

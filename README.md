@@ -32,8 +32,8 @@ A metric is an object with `namespace`, `start`, `end`, and optionally `children
 ```json
 {
   "namespace": "hotspot",
-  "start": 1401763961.864,
-  "end": 1401763962.567
+  "start": "2014-06-19T01:10:20.345287",
+  "end": "2014-06-19T01:10:21.345287"
 }
 ```
 
@@ -42,8 +42,8 @@ By specifying `children`, metrics can be nested arbitrarily deep.
 ```json
 {
   "namespace": "hotspot",
-  "start": 1401763961.864,
-  "end": 1401763972.567,
+  "start": "2014-06-19T01:10:20.345287",
+  "end": "2014-06-19T01:10:30.345287",
   "meta": {
       "mem_footprint": "10MB",
       "hostname": "foobar.com"
@@ -51,18 +51,18 @@ By specifying `children`, metrics can be nested arbitrarily deep.
   "children": [
     {
       "namespace": "sub_hotspot1",
-      "start": 1401763961.864,
-      "end": 1401763962.567
+      "start": "2014-06-19T01:10:21.345287",
+      "end": "2014-06-19T01:10:22.345287"
     },
     {
       "namespace": "sub_hotspot2",
-      "start": 1401763963.864,
-      "end": 1401763964.567,
+      "start": "2014-06-19T01:10:23.345287",
+      "end": "2014-06-19T01:10:24.345287",
       "children": [
          {
            "namespace": "sub_sub_hostspot",
-           "start": 1401763963.964,
-           "end": 1401763964.467
+           "start": "2014-06-19T01:10:23.445287",
+           "end": "2014-06-19T01:10:23.545287"
          }
       ]
     }

@@ -44,6 +44,10 @@ By specifying `children`, metrics can be nested arbitrarily deep.
   "namespace": "hotspot",
   "start": 1401763961.864,
   "end": 1401763972.567,
+  "meta": {
+      "mem_footprint": "10MB",
+      "hostname": "foobar.com"
+  },
   "children": [
     {
       "namespace": "sub_hotspot1",

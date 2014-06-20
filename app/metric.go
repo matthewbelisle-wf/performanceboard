@@ -16,19 +16,20 @@ type MetricDTO struct {
 	Meta map[string]interface{} `json:"meta"`
 }
 
-func makeMetricDtoList(metrics []Metric) []MetricDTO {
-	metricDtoList := []MetricDTO{}
+func makeMetricDtoList(metrics []Metric) []JsonResponse {
+	metricDtoList := []JsonResponse{}
 	for _, metric := range metrics {
-		var meta map[string]interface{}
+		metricDTO := make(JsonResponse)
+		metricDTO["start"] = metric.Start
+		metricDTO["end"] = metric.End
 		if len(metric.Meta) > 0 {
+			//conditionally add the metric data (helps trim the network traffic)
+			var meta map[string]interface{}
 			if err := json.Unmarshal([]byte(metric.Meta), &meta); err == nil {
-				metricDtoList = append(metricDtoList, MetricDTO{
-					Start: metric.Start,
-					End: metric.End,
-					Meta: meta,
-				})
+				metricDTO["meta"] = meta
 			}
 		}
+		metricDtoList = append(metricDtoList, metricDTO)
 	}
 	return metricDtoList
 }
@@ -66,8 +67,7 @@ func getNamespaces(writer http.ResponseWriter, request *http.Request) {
 	boardKeyString := mux.Vars(request)["board"]
 	context.Infof("looking up board %s", boardKeyString)
 	q := datastore.NewQuery(TaxonomyKind).
-		Filter("BoardKey =", boardKeyString).
-		Filter("Namespace =", "")
+		Filter("BoardKey =", boardKeyString)
 
     var taxonomies []Taxonomy
     if _, err := q.GetAll(context, &taxonomies); err != nil {

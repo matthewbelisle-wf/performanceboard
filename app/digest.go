@@ -50,11 +50,13 @@ func storeMetric(c appengine.Context, boardKeyString string, postKey string, dat
 	if ancestor != nil {
 		metric.Namespace = fmt.Sprintf("%s.%s", ancestor.Namespace, metric.Namespace)
 	}
-	meta, err := json.Marshal(data.Meta)
-	if err != nil {
-		c.Errorf("failed to marshall metadata: %v", err)
+	metadata := ""
+	if len(data.Meta) > 0 {
+		if meta, err := json.Marshal(data.Meta); err == nil {
+			metadata = string(meta)
+		}
 	}
-	metric.Meta = string(meta)
+	metric.Meta = metadata
 	metric.Start = data.Start
 	metric.End = data.End
 
@@ -66,7 +68,7 @@ func storeMetric(c appengine.Context, boardKeyString string, postKey string, dat
 	} else {
 		metric.Key = datastore.NewKey(c, MetricKind, keyID, 0, ancestor.Key)
 	}
-	_, err = datastore.Put(c, metric.Key, &metric)
+	_, err := datastore.Put(c, metric.Key, &metric)
 	if err != nil {
 		c.Errorf("Error on Metric Put:%v", err)
 		return "", err

@@ -3,17 +3,17 @@ package performanceboard
 import (
 	"appengine"
 	"appengine/datastore"
+	"encoding/json"
 	"github.com/gorilla/mux"
 	"io/ioutil"
-	"encoding/json"
 	"net/http"
 	"time"
 )
 
 type MetricDTO struct {
-	Start time.Time `json:"start"`
-	End time.Time `json:"end"`
-	Meta map[string]interface{} `json:"meta"`
+	Start time.Time              `json:"start"`
+	End   time.Time              `json:"end"`
+	Meta  map[string]interface{} `json:"meta"`
 }
 
 func makeMetricDtoList(metrics []Metric) []JsonResponse {
@@ -46,21 +46,20 @@ func getMetrics(writer http.ResponseWriter, request *http.Request) {
 	}
 	namespace := mux.Vars(request)["namespace"]
 	q := datastore.NewQuery(MetricKind).
-                Filter("Namespace =", namespace).
-                Order("-Start").
-                Ancestor(boardKey)
+		Filter("Namespace =", namespace).
+		Order("-Start").
+		Ancestor(boardKey)
 
 	var metrics []Metric
-    _, err = q.GetAll(context, &metrics)
-    metricsDtoList := makeMetricDtoList(metrics)
-    b, err := json.Marshal(metricsDtoList)
-    if err != nil {
-        return
-    }
-    writer.Header().Set("Content-Type", "application/json; charset=utf-8")
-    writer.Write(b)
+	_, err = q.GetAll(context, &metrics)
+	metricsDtoList := makeMetricDtoList(metrics)
+	b, err := json.Marshal(metricsDtoList)
+	if err != nil {
+		return
+	}
+	writer.Header().Set("Content-Type", "application/json; charset=utf-8")
+	writer.Write(b)
 }
-
 
 func getNamespaces(writer http.ResponseWriter, request *http.Request) {
 	context := appengine.NewContext(request)
@@ -69,24 +68,23 @@ func getNamespaces(writer http.ResponseWriter, request *http.Request) {
 	q := datastore.NewQuery(TaxonomyKind).
 		Filter("BoardKey =", boardKeyString)
 
-    var taxonomies []Taxonomy
-    if _, err := q.GetAll(context, &taxonomies); err != nil {
-    	context.Errorf("Error fetching Taxonomies:%v", err)
-    }
+	var taxonomies []Taxonomy
+	if _, err := q.GetAll(context, &taxonomies); err != nil {
+		context.Errorf("Error fetching Taxonomies:%v", err)
+	}
 
-    context.Infof("Found %d entries", len(taxonomies))
-    namespaces := []string{}
-    route := router.Get("namespace")
-    for _, taxonomy := range taxonomies {
-    	url, _ := route.URL("board", boardKeyString, "namespace", taxonomy.Childspace)
+	context.Infof("Found %d entries", len(taxonomies))
+	namespaces := []string{}
+	route := router.Get("namespace")
+	for _, taxonomy := range taxonomies {
+		url, _ := route.URL("board", boardKeyString, "namespace", taxonomy.Childspace)
 		namespaces = append(namespaces, AbsURL(*url, request))
-    }
+	}
 
 	JsonResponse{
 		"series": namespaces,
 	}.Write(writer)
 }
-
 
 func getBoard(writer http.ResponseWriter, request *http.Request) {
 	encodedKey := mux.Vars(request)["board"]

@@ -34,6 +34,22 @@ func makeMetricDtoList(metrics []Metric) []JsonResponse {
 	return metricDtoList
 }
 
+func readMetrics(context appengine.Context, boardKey *datastore.Key, namespace string, newestTime time.Time) ([]Metric, error) {
+	q := datastore.NewQuery(MetricKind).
+        Filter("Namespace =", namespace).
+        Filter("Start <", newestTime).
+        Order("-Start").
+        Ancestor(boardKey)
+
+	var metrics []Metric
+	//TODO use a limit and return a cursor
+    if _, err := q.GetAll(context, &metrics); err != nil {
+        context.Infof("Error reading metrics: %v", err)
+        return nil, err
+    }
+    return metrics, nil
+}
+
 // HTTP handlers
 
 func getMetrics(writer http.ResponseWriter, request *http.Request) {
@@ -45,13 +61,12 @@ func getMetrics(writer http.ResponseWriter, request *http.Request) {
 		return
 	}
 	namespace := mux.Vars(request)["namespace"]
-	q := datastore.NewQuery(MetricKind).
-                Filter("Namespace =", namespace).
-                Order("-Start").
-                Ancestor(boardKey)
+	metrics, err := readMetrics(context, boardKey, namespace, time.Now())
+	if err != nil {
+		serveError(context, writer, err)
+		return
+	}
 
-	var metrics []Metric
-    _, err = q.GetAll(context, &metrics)
     metricsDtoList := makeMetricDtoList(metrics)
     b, err := json.Marshal(metricsDtoList)
     if err != nil {

@@ -96,6 +96,34 @@ func storeTaxonomy(c appengine.Context, boardKey string, parentNamespace string,
 	}
 }
 
+func aggregateSecond(c appengine.Context, time time.Time, boardKey string, namespace string) {
+	// TODO Read the metrics table for a one-second interval
+	// TODO compute min, max, mean, and sample-count
+	// TODO store values to AggregateMetric entity
+	// TODO call aggregateMinute
+}
+
+func aggregateMinute(c appengine.Context, time time.Time, boardKey string, namespace string) {
+	// TODO Read the AggregateMetric table for a one-minute interval
+	// TODO compute min, max, mean, and sample-count
+	// TODO store values to AggregateMetric entity
+	// TODO call aggregateHour
+}
+
+func aggregateHour(c appengine.Context, time time.Time, boardKey string, namespace string) {
+	// TODO Read the AggregateMetric table for a one-hour interval
+	// TODO compute min, max, mean, and sample-count
+	// TODO store values to AggregateMetric entity
+	// TODO call aggregateDay
+}
+
+func aggregateDay(c appengine.Context, time time.Time, boardKey string, namespace string) {
+	// TODO Read the AggregateMetric table for a one-day interval
+	// TODO compute min, max, mean, and sample-count
+	// TODO store values to AggregateMetric entity
+}
+
+// This is the entry point into the deferred context of input digestion
 var digestPost = delay.Func("key", func(c appengine.Context, postKeyString string) {
 	post := Post{}
 	postKey, _ := datastore.DecodeKey(postKeyString)

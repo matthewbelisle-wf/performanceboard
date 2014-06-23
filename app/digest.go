@@ -44,36 +44,39 @@ type Taxonomy struct {
 	Childspace string         // a single child namespace of Namespace field
 }
 
-func storeMetric(c appengine.Context, boardKey string, postKey string, data PostBody, ancestor *Metric) (string, error) {
+func storeMetric(c appengine.Context, boardKeyString string, postKey string, data PostBody, ancestor *Metric) (string, error) {
 	metric := Metric{}
 	metric.Namespace = data.Namespace
 	if ancestor != nil {
 		metric.Namespace = fmt.Sprintf("%s.%s", ancestor.Namespace, metric.Namespace)
 	}
-	meta, err := json.Marshal(data.Meta)
-	if err != nil {
-		c.Errorf("failed to marshall metadata: %v", err)
+	metadata := ""
+	if len(data.Meta) > 0 {
+		if meta, err := json.Marshal(data.Meta); err == nil {
+			metadata = string(meta)
+		}
 	}
-	metric.Meta = string(meta)
+	metric.Meta = metadata
 	metric.Start = data.Start
 	metric.End = data.End
 
 	// compose an idempotent key for this data (allows Post data to be digested repeatedly)
 	keyID := fmt.Sprintf("%s:%s:%v:%v", postKey, metric.Namespace, data.Start, data.End)
 	if ancestor == nil {
-		metric.Key = datastore.NewKey(c, MetricKind, keyID, 0, nil)
+		boardKey, _ := datastore.DecodeKey(boardKeyString)
+		metric.Key = datastore.NewKey(c, MetricKind, keyID, 0, boardKey)
 	} else {
 		metric.Key = datastore.NewKey(c, MetricKind, keyID, 0, ancestor.Key)
 	}
-	_, err = datastore.Put(c, metric.Key, &metric)
+	_, err := datastore.Put(c, metric.Key, &metric)
 	if err != nil {
 		c.Errorf("Error on Metric Put:%v", err)
 		return "", err
 	}
 	// recursive storage for child objects to the same entity table
 	for _, child := range data.Children {
-		if childNamespace, err := storeMetric(c, boardKey, postKey, child, &metric); err == nil {
-			storeTaxonomy(c, boardKey, metric.Namespace, childNamespace)
+		if childNamespace, err := storeMetric(c, boardKeyString, postKey, child, &metric); err == nil {
+			storeTaxonomy(c, boardKeyString, metric.Namespace, childNamespace)
 		} else {
 			c.Errorf("Error storing Taxonomy:%v", err)
 		}

@@ -22,6 +22,51 @@ $('#create-board').click(function() {
         });
 });
 
+////////////
+// Graphs //
+////////////
+
+var initGraphs = function() {
+    var data = [[]];
+
+    var fetchGraphData = function(url) {
+        $.get(url, function(result) {
+            data[0].length = 0;// reset old data from graph
+            for (i = 0; i < result.length; i++) {
+                var start = Date.parse(result[i].start);
+                var end = Date.parse(result[i].end);
+                var y = end - start; // NOTE: accurate to a millisecond, no more!
+                data[0].push({x: i, y: y});
+            }
+            graph.update();
+        });
+    };
+
+    var fetchTopLevelUrl = function() {
+        var url = '/api/' + getBoardKey();
+        $.get(url, function(result) {
+            if (result.series.length) {
+                fetchGraphData(result.series[0]);
+            }
+        });
+    };
+
+    var graph = new Rickshaw.Graph({
+        element: $('#chart').get(0),
+        width: 600,
+        height: 400,
+        series: [
+            {
+                color: 'steelblue',
+                data: data[0]
+            }
+        ]
+    });
+
+    fetchTopLevelUrl();
+    graph.render();
+};
+
 ///////////
 // Views //
 ///////////
@@ -33,33 +78,16 @@ if (getBoardKey()) {
 }
 
 if (getBoardKey()) {
-    var api = window.location.origin + '/api/' + getBoardKey();
+    var api = '/api/' + getBoardKey();
     $('#api').attr('href', api);
     $('#api').show();
 } else {
-    $('#api').hide();    
+    $('#api').hide();  
 }
 
 if (getBoardKey()) {
+    initGraphs();
     $('#chart-block').show();
-    var graph = new Rickshaw.Graph({
-        element: $('#chart').get(0),
-        width: 600,
-        height: 400,
-        series: [
-            {
-                color: 'steelblue',
-                data: [ 
-                    {x: 0, y: 40}, 
-                    {x: 1, y: 49}, 
-                    {x: 2, y: 38}, 
-                    {x: 3, y: 30}, 
-                    {x: 4, y: 32}
-                ]
-            }
-        ]
-    });
-    graph.render();
 } else {
     $('#chart-block').hide();
 }

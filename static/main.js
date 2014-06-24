@@ -27,11 +27,14 @@ $('#create-board').click(function() {
 ////////////
 
 var initGraphs = function() {
+    // TODO: Make data a dictionary {'namespace': data}
     var data = [[]];
 
     var fetchGraphData = function(url) {
         $.get(url, function(result) {
-            data[0].length = 0;// reset old data from graph
+            while(data[0].length > 0) {
+                data[0].pop();
+            }
             for (i = 0; i < result.length; i++) {
                 var start = Date.parse(result[i].start);
                 var end = Date.parse(result[i].end);
@@ -46,13 +49,14 @@ var initGraphs = function() {
         var url = '/api/' + getBoardKey();
         $.get(url, function(result) {
             if (result.series.length) {
+                // TODO: Loop through series
                 fetchGraphData(result.series[0]);
             }
         });
     };
 
     var graph = new Rickshaw.Graph({
-        element: $('#chart').get(0),
+        element: $('#graph').get(0),
         width: 600,
         height: 400,
         series: [
@@ -87,7 +91,7 @@ if (getBoardKey()) {
 
 if (getBoardKey()) {
     initGraphs();
-    $('#chart-block').show();
+    $('#graph-block').show();
 } else {
-    $('#chart-block').hide();
+    $('#graph-block').hide();
 }

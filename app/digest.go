@@ -54,7 +54,8 @@ type AggregateMetric struct {
 	BinType   string // second, minute, hour, day
 	Min       int64
 	Max       int64
-	Average   int64
+	Average   float64
+	Sum       int64
 	Count     int64
 }
 
@@ -131,7 +132,7 @@ func aggregateSecond(context appengine.Context, t time.Time, boardKeyString stri
 	sum := time.Duration(0)
 	count := int64(0)
 	for _, metric := range metrics {
-		duration := metric.Start.Sub(metric.Start)
+		duration := metric.End.Sub(metric.Start)
 		if duration < min {
 			min = duration
 		}
@@ -142,7 +143,30 @@ func aggregateSecond(context appengine.Context, t time.Time, boardKeyString stri
 		count = count + 1
 	}
 
-	// TODO store values to AggregateMetric entity
+	if count == 0 {
+		return
+	}
+
+	// store values to AggregateMetric entity
+	keyID := fmt.Sprintf("%s:%s:%v", boardKeyString, namespace, truncTime)
+	key := datastore.NewKey(context, AggregateMetricKind, keyID, 0, boardKey)
+	aggMetric := AggregateMetric{
+		Key:       key,
+		BoardKey:  boardKeyString,
+		Namespace: namespace,
+		StartTime: truncTime,
+		BinType:   "second",
+		Min:       int64(min),
+		Max:       int64(max),
+		Average:   float64(sum) / float64(count) / float64(1000000.0), //convert to fractional milliseconds
+		Sum:       int64(sum),
+		Count:     int64(count),
+	}
+	if _, err := datastore.Put(context, aggMetric.Key, &aggMetric); err != nil {
+		context.Errorf("Error on Metric Put:%v", err)
+		return
+	}
+
 	// TODO call aggregateMinute
 }
 

@@ -45,7 +45,6 @@ func readMetrics(context appengine.Context,
 
 	if duration > 0 {
 		oldestTime := newestTime.Add(-duration)
-		context.Infof("oldestTime computed:%v", oldestTime)
 		q = q.Filter("Start >", oldestTime)
 	}
 

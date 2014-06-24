@@ -52,9 +52,9 @@ type AggregateMetric struct {
 	Namespace string
 	StartTime time.Time
 	BinType   string // second, minute, hour, day
-	Min       int64
-	Max       int64
-	Average   float64
+	Min       float64
+	Max       float64
+	Mean      float64
 	Sum       int64
 	Count     int64
 }
@@ -156,9 +156,9 @@ func aggregateSecond(context appengine.Context, t time.Time, boardKeyString stri
 		Namespace: namespace,
 		StartTime: truncTime,
 		BinType:   "second",
-		Min:       int64(min),
-		Max:       int64(max),
-		Average:   float64(sum) / float64(count) / float64(1000000.0), //convert to fractional milliseconds
+		Min:       float64(min) / float64(1000000.0),
+		Max:       float64(max) / float64(1000000.0),
+		Mean:      float64(sum) / float64(count) / float64(1000000.0), //convert to fractional milliseconds
 		Sum:       int64(sum),
 		Count:     int64(count),
 	}

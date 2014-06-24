@@ -10,12 +10,6 @@ import (
 	"time"
 )
 
-type MetricDTO struct {
-	Start time.Time              `json:"start"`
-	End   time.Time              `json:"end"`
-	Meta  map[string]interface{} `json:"meta"`
-}
-
 func makeMetricDtoList(metrics []Metric) []JsonResponse {
 	metricDtoList := []JsonResponse{}
 	for _, metric := range metrics {

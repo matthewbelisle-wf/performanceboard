@@ -8,11 +8,8 @@
 package performanceboard
 
 import (
-	"appengine"
 	"github.com/gorilla/mux"
-	"io"
 	"io/ioutil"
-	"fmt"
 	"net/http"
 )
 
@@ -42,11 +39,4 @@ func client(writer http.ResponseWriter, request *http.Request) {
 
 func methodNotAllowed(writer http.ResponseWriter, request *http.Request) {
 	http.Error(writer, http.StatusText(http.StatusMethodNotAllowed), http.StatusMethodNotAllowed)
-}
-
-func serveError(c appengine.Context, w http.ResponseWriter, err error) {
-    w.WriteHeader(http.StatusInternalServerError)
-    w.Header().Set("Content-Type", "text/plain")
-    io.WriteString(w, fmt.Sprintf("Error: %v", err))
-    c.Errorf("%v", err)
 }

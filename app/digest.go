@@ -44,7 +44,21 @@ type Taxonomy struct {
 	Childspace string         // a single child namespace of Namespace field
 }
 
-func storeMetric(c appengine.Context, boardKeyString string, postKey string, data PostBody, ancestor *Metric) (string, error) {
+const AggregateMetricKind = "AggregateMetric"
+
+type AggregateMetric struct {
+	Key       *datastore.Key `datastore:"-"`
+	BoardKey  string
+	Namespace string
+	StartTime time.Time
+	BinType   string // second, minute, hour, day
+	Min       int64
+	Max       int64
+	Average   int64
+	Count     int64
+}
+
+func storeMetric(context appengine.Context, boardKeyString string, postKey string, data PostBody, ancestor *Metric) (string, error) {
 	metric := Metric{}
 	metric.Namespace = data.Namespace
 	if ancestor != nil {
@@ -64,41 +78,70 @@ func storeMetric(c appengine.Context, boardKeyString string, postKey string, dat
 	keyID := fmt.Sprintf("%s:%s:%v:%v", postKey, metric.Namespace, data.Start, data.End)
 	if ancestor == nil {
 		boardKey, _ := datastore.DecodeKey(boardKeyString)
-		metric.Key = datastore.NewKey(c, MetricKind, keyID, 0, boardKey)
+		metric.Key = datastore.NewKey(context, MetricKind, keyID, 0, boardKey)
 	} else {
-		metric.Key = datastore.NewKey(c, MetricKind, keyID, 0, ancestor.Key)
+		metric.Key = datastore.NewKey(context, MetricKind, keyID, 0, ancestor.Key)
 	}
-	_, err := datastore.Put(c, metric.Key, &metric)
+	_, err := datastore.Put(context, metric.Key, &metric)
 	if err != nil {
-		c.Errorf("Error on Metric Put:%v", err)
+		context.Errorf("Error on Metric Put:%v", err)
 		return "", err
 	}
 	// recursive storage for child objects to the same entity table
 	for _, child := range data.Children {
-		if childNamespace, err := storeMetric(c, boardKeyString, postKey, child, &metric); err == nil {
-			storeTaxonomy(c, boardKeyString, metric.Namespace, childNamespace)
+		if childNamespace, err := storeMetric(context, boardKeyString, postKey, child, &metric); err == nil {
+			storeTaxonomy(context, boardKeyString, metric.Namespace, childNamespace)
 		} else {
-			c.Errorf("Error storing Taxonomy:%v", err)
+			context.Errorf("Error storing Taxonomy:%v", err)
 		}
 	}
+
+	// TODO optimize how often the aggregate chain is called to once per namespace per post
+	aggregateSecond(context, metric.Start, boardKeyString, metric.Namespace)
+
 	return metric.Namespace, nil
 }
 
-func storeTaxonomy(c appengine.Context, boardKey string, parentNamespace string, childNamespace string) {
+func storeTaxonomy(context appengine.Context, boardKey string, parentNamespace string, childNamespace string) {
 	taxonomy := Taxonomy{}
 	keyID := fmt.Sprintf("%s:%s:%s", boardKey, parentNamespace, childNamespace)
-	taxonomy.Key = datastore.NewKey(c, TaxonomyKind, keyID, 0, nil)
+	taxonomy.Key = datastore.NewKey(context, TaxonomyKind, keyID, 0, nil)
 	taxonomy.BoardKey = boardKey
 	taxonomy.Namespace = parentNamespace
 	taxonomy.Childspace = childNamespace
-	if _, err := datastore.Put(c, taxonomy.Key, &taxonomy); err != nil {
-		c.Errorf("Error on Taxonomy Put:%v", err)
+	if _, err := datastore.Put(context, taxonomy.Key, &taxonomy); err != nil {
+		context.Errorf("Error on Taxonomy Put:%v", err)
 	}
 }
 
-func aggregateSecond(c appengine.Context, time time.Time, boardKey string, namespace string) {
-	// TODO Read the metrics table for a one-second interval
-	// TODO compute min, max, mean, and sample-count
+func aggregateSecond(context appengine.Context, t time.Time, boardKeyString string, namespace string) {
+	// Read the metrics table for a one-second interval
+	boardKey, err := datastore.DecodeKey(boardKeyString)
+	if err != nil {
+		context.Errorf("aggregateSecond failed to decode %s: %v", boardKeyString, err)
+		return
+	}
+	// trim fractional second to bin aggregate computation
+	truncTime := t.Truncate(1 * time.Second)
+	metrics, err := readMetrics(context, boardKey, namespace, truncTime, 1*time.Second)
+
+	// compute min, max, mean, and sample-count
+	min := time.Duration(9223372036854775806)
+	max := time.Duration(0)
+	sum := time.Duration(0)
+	count := int64(0)
+	for _, metric := range metrics {
+		duration := metric.Start.Sub(metric.Start)
+		if duration < min {
+			min = duration
+		}
+		if duration > max {
+			max = duration
+		}
+		sum = sum + duration
+		count = count + 1
+	}
+
 	// TODO store values to AggregateMetric entity
 	// TODO call aggregateMinute
 }

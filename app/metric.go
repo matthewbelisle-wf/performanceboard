@@ -3,17 +3,17 @@ package performanceboard
 import (
 	"appengine"
 	"appengine/datastore"
+	"encoding/json"
 	"github.com/gorilla/mux"
 	"io/ioutil"
-	"encoding/json"
 	"net/http"
 	"time"
 )
 
 type MetricDTO struct {
-	Start time.Time `json:"start"`
-	End time.Time `json:"end"`
-	Meta map[string]interface{} `json:"meta"`
+	Start time.Time              `json:"start"`
+	End   time.Time              `json:"end"`
+	Meta  map[string]interface{} `json:"meta"`
 }
 
 func makeMetricDtoList(metrics []Metric) []JsonResponse {
@@ -34,20 +34,28 @@ func makeMetricDtoList(metrics []Metric) []JsonResponse {
 	return metricDtoList
 }
 
-func readMetrics(context appengine.Context, boardKey *datastore.Key, namespace string, newestTime time.Time) ([]Metric, error) {
+func readMetrics(context appengine.Context,
+	boardKey *datastore.Key, namespace string,
+	newestTime time.Time, duration time.Duration) ([]Metric, error) {
 	q := datastore.NewQuery(MetricKind).
-        Filter("Namespace =", namespace).
-        Filter("Start <", newestTime).
-        Order("-Start").
-        Ancestor(boardKey)
+		Filter("Namespace =", namespace).
+		Filter("Start <", newestTime).
+		Order("-Start").
+		Ancestor(boardKey)
+
+	if duration > 0 {
+		oldestTime := newestTime.Add(-duration)
+		context.Infof("oldestTime computed:%v", oldestTime)
+		q = q.Filter("Start >", oldestTime)
+	}
 
 	var metrics []Metric
 	//TODO use a limit and return a cursor
-    if _, err := q.GetAll(context, &metrics); err != nil {
-        context.Infof("Error reading metrics: %v", err)
-        return nil, err
-    }
-    return metrics, nil
+	if _, err := q.GetAll(context, &metrics); err != nil {
+		context.Infof("Error reading metrics: %v", err)
+		return nil, err
+	}
+	return metrics, nil
 }
 
 // HTTP handlers
@@ -61,21 +69,21 @@ func getMetrics(writer http.ResponseWriter, request *http.Request) {
 		return
 	}
 	namespace := mux.Vars(request)["namespace"]
-	metrics, err := readMetrics(context, boardKey, namespace, time.Now())
+	metrics, err := readMetrics(context, boardKey, namespace, time.Now(), 0)
 	if err != nil {
-		serveError(context, writer, err)
+		http.Error(writer, err.Error(), http.StatusBadRequest)
 		return
 	}
 
-    metricsDtoList := makeMetricDtoList(metrics)
-    b, err := json.Marshal(metricsDtoList)
-    if err != nil {
-        return
-    }
-    writer.Header().Set("Content-Type", "application/json; charset=utf-8")
-    writer.Write(b)
+	metricsDtoList := makeMetricDtoList(metrics)
+	b, err := json.Marshal(metricsDtoList)
+	if err != nil {
+		http.Error(writer, err.Error(), http.StatusBadRequest)
+		return
+	}
+	writer.Header().Set("Content-Type", "application/json; charset=utf-8")
+	writer.Write(b)
 }
-
 
 func getNamespaces(writer http.ResponseWriter, request *http.Request) {
 	context := appengine.NewContext(request)
@@ -84,24 +92,23 @@ func getNamespaces(writer http.ResponseWriter, request *http.Request) {
 	q := datastore.NewQuery(TaxonomyKind).
 		Filter("BoardKey =", boardKeyString)
 
-    var taxonomies []Taxonomy
-    if _, err := q.GetAll(context, &taxonomies); err != nil {
-    	context.Errorf("Error fetching Taxonomies:%v", err)
-    }
+	var taxonomies []Taxonomy
+	if _, err := q.GetAll(context, &taxonomies); err != nil {
+		context.Errorf("Error fetching Taxonomies:%v", err)
+	}
 
-    context.Infof("Found %d entries", len(taxonomies))
-    namespaces := []string{}
-    route := router.Get("namespace")
-    for _, taxonomy := range taxonomies {
-    	url, _ := route.URL("board", boardKeyString, "namespace", taxonomy.Childspace)
+	context.Infof("Found %d entries", len(taxonomies))
+	namespaces := []string{}
+	route := router.Get("namespace")
+	for _, taxonomy := range taxonomies {
+		url, _ := route.URL("board", boardKeyString, "namespace", taxonomy.Childspace)
 		namespaces = append(namespaces, AbsURL(*url, request))
-    }
+	}
 
 	JsonResponse{
 		"series": namespaces,
 	}.Write(writer)
 }
-
 
 func getBoard(writer http.ResponseWriter, request *http.Request) {
 	encodedKey := mux.Vars(request)["board"]

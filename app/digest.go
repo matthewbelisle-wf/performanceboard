@@ -59,6 +59,19 @@ type AggregateMetric struct {
 	Count     int64
 }
 
+func storeTaxonomy(context appengine.Context, boardKey string, parentNamespace string, childNamespace string) {
+	taxonomy := Taxonomy{}
+	keyID := fmt.Sprintf("%s:%s:%s", boardKey, parentNamespace, childNamespace)
+	taxonomy.Key = datastore.NewKey(context, TaxonomyKind, keyID, 0, nil)
+	taxonomy.BoardKey = boardKey
+	taxonomy.Namespace = parentNamespace
+	taxonomy.Childspace = childNamespace
+	if _, err := datastore.Put(context, taxonomy.Key, &taxonomy); err != nil {
+		context.Errorf("Error on Taxonomy Put:%v", err)
+	}
+}
+
+// decompose a raw Post event into its hierarchical namespaces and write the Metrics to disk
 func storeMetric(context appengine.Context, boardKeyString string, postKey string, data PostBody, ancestor *Metric) (string, error) {
 	metric := Metric{}
 	metric.Namespace = data.Namespace
@@ -103,18 +116,6 @@ func storeMetric(context appengine.Context, boardKeyString string, postKey strin
 	return metric.Namespace, nil
 }
 
-func storeTaxonomy(context appengine.Context, boardKey string, parentNamespace string, childNamespace string) {
-	taxonomy := Taxonomy{}
-	keyID := fmt.Sprintf("%s:%s:%s", boardKey, parentNamespace, childNamespace)
-	taxonomy.Key = datastore.NewKey(context, TaxonomyKind, keyID, 0, nil)
-	taxonomy.BoardKey = boardKey
-	taxonomy.Namespace = parentNamespace
-	taxonomy.Childspace = childNamespace
-	if _, err := datastore.Put(context, taxonomy.Key, &taxonomy); err != nil {
-		context.Errorf("Error on Taxonomy Put:%v", err)
-	}
-}
-
 func aggregateSecond(context appengine.Context, t time.Time, boardKeyString string, namespace string) {
 	// Read the metrics table for a one-second interval
 	boardKey, err := datastore.DecodeKey(boardKeyString)
@@ -125,14 +126,18 @@ func aggregateSecond(context appengine.Context, t time.Time, boardKeyString stri
 	// trim fractional second to bin aggregate computation
 	truncTime := t.Truncate(1 * time.Second)
 	metrics, err := readMetrics(context, boardKey, namespace, truncTime, 1*time.Second)
+	count := len(metrics)
+	if count == 0 {
+		return
+	}
 
 	// compute min, max, mean, and sample-count
-	min := time.Duration(9223372036854775806)
-	max := time.Duration(0)
+	duration := metrics[0].End.Sub(metrics[0].Start)
+	min := duration
+	max := duration
 	sum := time.Duration(0)
-	count := int64(0)
 	for _, metric := range metrics {
-		duration := metric.End.Sub(metric.Start)
+		duration = metric.End.Sub(metric.Start)
 		if duration < min {
 			min = duration
 		}
@@ -140,15 +145,10 @@ func aggregateSecond(context appengine.Context, t time.Time, boardKeyString stri
 			max = duration
 		}
 		sum = sum + duration
-		count = count + 1
-	}
-
-	if count == 0 {
-		return
 	}
 
 	// store values to AggregateMetric entity
-	keyID := fmt.Sprintf("%s:%s:%v", boardKeyString, namespace, truncTime)
+	keyID := fmt.Sprintf("%s:%s:%v:%s", boardKeyString, namespace, truncTime, "second")
 	key := datastore.NewKey(context, AggregateMetricKind, keyID, 0, boardKey)
 	aggMetric := AggregateMetric{
 		Key:       key,
@@ -167,27 +167,85 @@ func aggregateSecond(context appengine.Context, t time.Time, boardKeyString stri
 		return
 	}
 
-	// TODO call aggregateMinute
+	aggregateMore(context, t, boardKeyString, namespace, "minute")
 }
 
-func aggregateMinute(c appengine.Context, time time.Time, boardKey string, namespace string) {
-	// TODO Read the AggregateMetric table for a one-minute interval
-	// TODO compute min, max, mean, and sample-count
-	// TODO store values to AggregateMetric entity
-	// TODO call aggregateHour
-}
+func aggregateMore(context appengine.Context, t time.Time, boardKeyString string, namespace string, binType string) {
+	// Read the AggregateMetric table for a one-minute interval
+	boardKey, _ := datastore.DecodeKey(boardKeyString)
+	var aggregateBinType string
+	aggregateDuration := time.Minute
+	switch binType {
+	case "minute":
+		aggregateBinType = "second"
+	case "hour":
+		aggregateBinType = "minute"
+		aggregateDuration = time.Hour
+	case "day":
+		aggregateBinType = "hour"
+		aggregateDuration = time.Duration(24) * time.Hour
+	default:
+		context.Errorf("Invalid aggregate bin type: %s, for board:%s", binType, boardKeyString)
+		return
+	}
+	truncTime := t.Truncate(aggregateDuration)
 
-func aggregateHour(c appengine.Context, time time.Time, boardKey string, namespace string) {
-	// TODO Read the AggregateMetric table for a one-hour interval
-	// TODO compute min, max, mean, and sample-count
-	// TODO store values to AggregateMetric entity
-	// TODO call aggregateDay
-}
+	// readAggregates reads time backwards, so we jump time forward to read our duration
+	aggregateMetrics, err := readAggregates(
+		context, boardKey, namespace, aggregateBinType,
+		truncTime.Add(aggregateDuration), aggregateDuration, 0, "")
+	if err != nil {
+		context.Errorf("aggregateMore failed to readAggregates on board: %s, %v", boardKeyString, err)
+		return
+	}
+	if len(aggregateMetrics) == 0 {
+		return
+	}
 
-func aggregateDay(c appengine.Context, time time.Time, boardKey string, namespace string) {
-	// TODO Read the AggregateMetric table for a one-day interval
-	// TODO compute min, max, mean, and sample-count
-	// TODO store values to AggregateMetric entity
+	// compute min, max, mean, and sample-count
+	min := aggregateMetrics[0].Min
+	max := aggregateMetrics[0].Max
+	sum := int64(0)
+	count := int64(0)
+	for _, aggregateMetric := range aggregateMetrics {
+		if aggregateMetric.Min < min {
+			min = aggregateMetric.Min
+		}
+		if aggregateMetric.Max > max {
+			max = aggregateMetric.Max
+		}
+		sum = sum + aggregateMetric.Sum
+		count = count + aggregateMetric.Count
+	}
+
+	// store values to AggregateMetric entity
+	keyID := fmt.Sprintf("%s:%s:%v:%s", boardKeyString, namespace, truncTime, binType)
+	key := datastore.NewKey(context, AggregateMetricKind, keyID, 0, boardKey)
+	aggMetric := AggregateMetric{
+		Key:       key,
+		BoardKey:  boardKeyString,
+		Namespace: namespace,
+		StartTime: truncTime,
+		BinType:   binType,
+		Min:       float64(min),
+		Max:       float64(max),
+		Mean:      float64(sum) / float64(count) / float64(1000000.0), //convert to fractional milliseconds
+		Sum:       int64(sum),
+		Count:     int64(count),
+	}
+	if _, err := datastore.Put(context, aggMetric.Key, &aggMetric); err != nil {
+		context.Errorf("Error on Metric Put:%v", err)
+		return
+	}
+
+	// TODO delay continued aggregation to let help let previous aggregation data settle
+	switch binType {
+	case "minute":
+		aggregateMore(context, t, boardKeyString, namespace, "hour")
+	case "hour":
+		aggregateMore(context, t, boardKeyString, namespace, "day")
+	}
+
 }
 
 // This is the entry point into the deferred context of input digestion

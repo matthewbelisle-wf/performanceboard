@@ -10,12 +10,6 @@ import (
 	"time"
 )
 
-type MetricDTO struct {
-	Start time.Time              `json:"start"`
-	End   time.Time              `json:"end"`
-	Meta  map[string]interface{} `json:"meta"`
-}
-
 func makeMetricDtoList(metrics []Metric) []JsonResponse {
 	metricDtoList := []JsonResponse{}
 	for _, metric := range metrics {
@@ -34,6 +28,29 @@ func makeMetricDtoList(metrics []Metric) []JsonResponse {
 	return metricDtoList
 }
 
+func readMetrics(context appengine.Context,
+	boardKey *datastore.Key, namespace string,
+	newestTime time.Time, duration time.Duration) ([]Metric, error) {
+	q := datastore.NewQuery(MetricKind).
+		Filter("Namespace =", namespace).
+		Filter("Start <", newestTime).
+		Order("-Start").
+		Ancestor(boardKey)
+
+	if duration > 0 {
+		oldestTime := newestTime.Add(-duration)
+		q = q.Filter("Start >", oldestTime)
+	}
+
+	var metrics []Metric
+	//TODO use a limit and return a cursor
+	if _, err := q.GetAll(context, &metrics); err != nil {
+		context.Infof("Error reading metrics: %v", err)
+		return nil, err
+	}
+	return metrics, nil
+}
+
 // HTTP handlers
 
 func getMetrics(writer http.ResponseWriter, request *http.Request) {
@@ -45,16 +62,16 @@ func getMetrics(writer http.ResponseWriter, request *http.Request) {
 		return
 	}
 	namespace := mux.Vars(request)["namespace"]
-	q := datastore.NewQuery(MetricKind).
-		Filter("Namespace =", namespace).
-		Order("-Start").
-		Ancestor(boardKey)
+	metrics, err := readMetrics(context, boardKey, namespace, time.Now(), 0)
+	if err != nil {
+		http.Error(writer, err.Error(), http.StatusBadRequest)
+		return
+	}
 
-	var metrics []Metric
-	_, err = q.GetAll(context, &metrics)
 	metricsDtoList := makeMetricDtoList(metrics)
 	b, err := json.Marshal(metricsDtoList)
 	if err != nil {
+		http.Error(writer, err.Error(), http.StatusBadRequest)
 		return
 	}
 	writer.Header().Set("Content-Type", "application/json; charset=utf-8")

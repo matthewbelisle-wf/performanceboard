@@ -17,6 +17,8 @@ var router *mux.Router
 
 func init() {
 	router = mux.NewRouter()
+	router.HandleFunc("/api/post/{post_key}", getPost).Methods("GET").Name("get_post")
+	router.HandleFunc("/api/post", methodNotAllowed)
 	router.HandleFunc("/api/{board}/{namespace}/{bin_type}", getAggregates).Methods("GET").Name("aggregate")
 	router.HandleFunc("/api/{board}/{namespace}/{bin_type}", methodNotAllowed)
 	router.HandleFunc("/api/{board}/{namespace}", getMetrics).Methods("GET").Name("namespace")

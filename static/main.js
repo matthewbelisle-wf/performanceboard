@@ -27,48 +27,45 @@ $('#create-board').click(function() {
 ////////////
 
 var initGraphs = function() {
-    // TODO: Make data a dictionary {'namespace': data}
-    var data = [[]];
+    var graphs = {}; // {'namespace.name': graph}
+    var data = {}; // {'namespace.name': data}
 
-    var fetchGraphData = function(url) {
-        $.get(url, function(result) {
-            while(data[0].length > 0) {
-                data[0].pop();
+    var initGraph = function(namespace) {
+        var graphElement = $('<div>');
+        $('#graphs-block').append(graphElement);
+        data[namespace.name] = [];
+        updateData(namespace);
+        graphs[namespace.name] = new Rickshaw.Graph({
+            element: graphElement.get(0),
+            width: 600,
+            height: 400,
+            series: [{data: data[namespace.name], color: 'black'}]
+        });
+        graphs[namespace.name].render();
+        console.log(graphs[namespace.name]);
+    };
+
+    var updateData = function(namespace) {
+        $.get(namespace.api, function(result) {
+            while(data[namespace.name].length > 0) {
+                data[namespace.name].pop();
             }
             for (i = 0; i < result.length; i++) {
                 var start = Date.parse(result[i].start);
                 var end = Date.parse(result[i].end);
                 var y = end - start; // NOTE: accurate to a millisecond, no more!
-                data[0].push({x: i, y: y});
+                data[namespace.name].push({x: i, y: y});
             }
-            graph.update();
+            graphs[namespace.name].update();
         });
     };
 
-    var fetchTopLevelUrl = function() {
-        var url = '/api/' + getBoardKey();
-        $.get(url, function(result) {
-            if (result.series.length) {
-                // TODO: Loop through series
-                fetchGraphData(result.series[0]);
+    $.get('/api/' + getBoardKey())
+        .success(function(result) {
+            for (var i = 0; i < result.namespaces.length; i++) {
+                initGraph(result.namespaces[i]);
             }
         });
-    };
-
-    var graph = new Rickshaw.Graph({
-        element: $('#graph').get(0),
-        width: 600,
-        height: 400,
-        series: [
-            {
-                color: 'steelblue',
-                data: data[0]
-            }
-        ]
-    });
-
-    fetchTopLevelUrl();
-    graph.render();
 };
 
 ///////////

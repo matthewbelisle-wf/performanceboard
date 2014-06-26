@@ -78,47 +78,6 @@ func getMetrics(writer http.ResponseWriter, request *http.Request) {
 	writer.Write(b)
 }
 
-func getNamespaces(writer http.ResponseWriter, request *http.Request) {
-	context := appengine.NewContext(request)
-	boardKeyString := mux.Vars(request)["board"]
-	context.Infof("looking up board %s", boardKeyString)
-	q := datastore.NewQuery(TaxonomyKind).
-		Filter("BoardKey =", boardKeyString)
-
-	var taxonomies []Taxonomy
-	if _, err := q.GetAll(context, &taxonomies); err != nil {
-		context.Errorf("Error fetching Taxonomies:%v", err)
-	}
-
-	context.Infof("Found %d entries", len(taxonomies))
-	namespaces := []string{}
-	route := router.Get("namespace")
-	for _, taxonomy := range taxonomies {
-		url, _ := route.URL("board", boardKeyString, "namespace", taxonomy.Childspace)
-		namespaces = append(namespaces, AbsURL(*url, request))
-	}
-
-	JsonResponse{
-		"series": namespaces,
-	}.Write(writer)
-}
-
-func getBoard(writer http.ResponseWriter, request *http.Request) {
-	encodedKey := mux.Vars(request)["board"]
-	key, err := datastore.DecodeKey(encodedKey)
-	if err != nil {
-		http.Error(writer, err.Error(), http.StatusBadRequest)
-		return
-	}
-	context := appengine.NewContext(request)
-	board := Board{Key: key}
-	if err := datastore.Get(context, key, &board); err != nil {
-		http.Error(writer, err.Error(), http.StatusBadRequest)
-		return
-	}
-	board.ServeHTTP(writer, request)
-}
-
 // TODO memcache the board entity and validate boardKey against it
 func postMetric(writer http.ResponseWriter, request *http.Request) {
 	// Checks that the key is valid

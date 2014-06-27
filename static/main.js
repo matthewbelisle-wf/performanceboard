@@ -22,6 +22,50 @@ $('#create-board').click(function() {
         });
 });
 
+////////////
+// Graphs //
+////////////
+
+var initGraphs = function() {
+    var graphs = {}; // {'namespace.name': graph}
+    var data = {}; // {'namespace.name': data}
+
+    var initGraph = function(namespace) {
+        var graphElement = $('<div>');
+        $('#graphs-block').append(graphElement);
+        data[namespace.name] = [];
+        updateData(namespace);
+        graphs[namespace.name] = new Rickshaw.Graph({
+            element: graphElement.get(0),
+            width: 600,
+            height: 400,
+            series: [{data: data[namespace.name], color: 'black'}]
+        });
+        graphs[namespace.name].render();
+        console.log(graphs[namespace.name]);
+    };
+
+    var updateData = function(namespace) {
+        $.get(namespace.api, function(result) {
+            data[namespace.name].length = 0;
+            for (i = 0; i < result.length; i++) {
+                var start = Date.parse(result[i].start);
+                var end = Date.parse(result[i].end);
+                var y = end - start; // NOTE: accurate to a millisecond, no more!
+                data[namespace.name].push({x: i, y: y});
+            }
+            graphs[namespace.name].update();
+        });
+    };
+
+    $.get('/api/' + getBoardKey())
+        .success(function(result) {
+            for (var i = 0; i < result.namespaces.length; i++) {
+                initGraph(result.namespaces[i]);
+            }
+        });
+};
+
 ///////////
 // Views //
 ///////////
@@ -33,33 +77,16 @@ if (getBoardKey()) {
 }
 
 if (getBoardKey()) {
-    var api = window.location.origin + '/api/' + getBoardKey();
+    var api = '/api/' + getBoardKey();
     $('#api').attr('href', api);
     $('#api').show();
 } else {
-    $('#api').hide();    
+    $('#api').hide();  
 }
 
 if (getBoardKey()) {
-    $('#chart-block').show();
-    var graph = new Rickshaw.Graph({
-        element: $('#chart').get(0),
-        width: 600,
-        height: 400,
-        series: [
-            {
-                color: 'steelblue',
-                data: [ 
-                    {x: 0, y: 40}, 
-                    {x: 1, y: 49}, 
-                    {x: 2, y: 38}, 
-                    {x: 3, y: 30}, 
-                    {x: 4, y: 32}
-                ]
-            }
-        ]
-    });
-    graph.render();
+    initGraphs();
+    $('#graph-block').show();
 } else {
-    $('#chart-block').hide();
+    $('#graph-block').hide();
 }

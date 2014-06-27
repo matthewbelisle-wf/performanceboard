@@ -47,9 +47,7 @@ var initGraphs = function() {
 
     var updateData = function(namespace) {
         $.get(namespace.api, function(result) {
-            while(data[namespace.name].length > 0) {
-                data[namespace.name].pop();
-            }
+            data[namespace.name].length = 0;
             for (i = 0; i < result.length; i++) {
                 var start = Date.parse(result[i].start);
                 var end = Date.parse(result[i].end);

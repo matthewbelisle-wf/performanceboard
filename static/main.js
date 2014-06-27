@@ -33,15 +33,14 @@ var initGraphs = function() {
         var graphElement =$('<div class="graph">');
         $('#graphs-block').append(graphElement);
         graphs[namespace.name] = graphElement.epoch({
-            type: 'time.bar',
+            type: 'bar',
             data: [{
                 label: namespace.name,
                 values: []
             }]
         });
-        setInterval(function() {
-            updateGraph(namespace);
-        }, 2000);
+        updateGraph(namespace);
+        setInterval(function() { updateGraph(namespace); }, 2000);
     };
 
     var updateGraph = function(namespace) {
@@ -52,13 +51,12 @@ var initGraphs = function() {
                     var start = Date.parse(result[i].start);
                     var end = Date.parse(result[i].end);
                     var y = end - start; // NOTE: accurate to a millisecond, no more!
-                    values.push({time: start / 1000, y: y});
+                    values.push({x: i, y: y});
                 }
-                debugger; // No push!?!
-                graphs[namespace.name].push({
+                graphs[namespace.name].update([{
                     label: namespace.name,
                     values: values
-                });
+                }]);
             });
     };
 

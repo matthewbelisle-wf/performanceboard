@@ -7,6 +7,7 @@ import (
 	"github.com/gorilla/mux"
 	"io/ioutil"
 	"net/http"
+	"strconv"
 	"time"
 )
 
@@ -23,31 +24,86 @@ func makeMetricDtoList(metrics []Metric) []JsonResponse {
 				metricDTO["meta"] = meta
 			}
 		}
+		if len(metric.Children) > 0 {
+			metricDTO["children"] = makeMetricDtoList(metric.Children)
+		}
 		metricDtoList = append(metricDtoList, metricDTO)
 	}
 	return metricDtoList
 }
 
-func readMetrics(context appengine.Context,
-	boardKey *datastore.Key, namespace string,
-	newestTime time.Time, duration time.Duration) ([]Metric, error) {
+func readMetricChildren(context appengine.Context, boardKeyString string, parent *Metric, depth int) ([]Metric, error) {
+	childNamespaces := readNamespaceChildren(context, boardKeyString, parent.Namespace)
+	var allChildren []Metric
+	for _, namespace := range childNamespaces {
+		q := datastore.NewQuery(MetricKind).
+			Filter("Namespace =", namespace).
+			Ancestor(parent.Key)
+
+		children := []Metric{}
+		keys, err := q.GetAll(context, &children)
+		if err != nil {
+			return nil, err
+		}
+		if depth != 0 {
+			for i, child := range children {
+				child.Key = keys[i]
+				if grandChildren, err := readMetricChildren(context, boardKeyString, &child, (depth - 1)); err != nil {
+					context.Errorf("error reading children:%v", err)
+					return nil, err
+				} else {
+					if len(grandChildren) > 0 {
+						child.Children = grandChildren
+					}
+				}
+			}
+		}
+		for _, child := range children {
+			allChildren = append(allChildren, child)
+		}
+	}
+
+	return allChildren, nil
+}
+
+func readMetrics(context appengine.Context, boardKey *datastore.Key, namespace string,
+	newestTime time.Time, duration time.Duration, depth int) ([]Metric, error) {
+	// Duration is used instead of oldestTime to help support unbound queries
+
 	q := datastore.NewQuery(MetricKind).
 		Filter("Namespace =", namespace).
-		Filter("Start <", newestTime).
+		Filter("Start <=", newestTime).
 		Order("-Start").
 		Ancestor(boardKey)
 
 	if duration > 0 {
 		oldestTime := newestTime.Add(-duration)
-		q = q.Filter("Start >", oldestTime)
+		q = q.Filter("Start >=", oldestTime)
 	}
 
+	// TODO use a limit and return a cursor
 	var metrics []Metric
-	//TODO use a limit and return a cursor
-	if _, err := q.GetAll(context, &metrics); err != nil {
-		context.Infof("Error reading metrics: %v", err)
+	keys, err := q.GetAll(context, &metrics)
+	if err != nil {
+		context.Errorf("Error reading metrics: %v", err)
 		return nil, err
 	}
+
+	// foreach Metric recursively fetch children
+	if depth != 0 {
+		for i, metric := range metrics {
+			metric.Key = keys[i]
+			if kids, err := readMetricChildren(context, boardKey.Encode(), &metric, (depth - 1)); err != nil {
+				context.Errorf("Error reading top-level Metrics children for %v:%v", metric, err)
+				return nil, err
+			} else {
+				if len(kids) > 0 {
+					metrics[i].Children = kids
+				}
+			}
+		}
+	}
+
 	return metrics, nil
 }
 
@@ -62,15 +118,38 @@ func getMetrics(writer http.ResponseWriter, request *http.Request) {
 		return
 	}
 	namespace := mux.Vars(request)["namespace"]
-	var duration time.Duration
-	if param := request.FormValue("start"); len(param) > 0 {
-		start, err := time.Parse(time.RFC3339, param)
-		if err != nil {
+
+	// evaluate newest point in request timeline
+	end := time.Now()
+	if endParam := request.FormValue("end"); len(endParam) > 0 {
+		if end, err = time.Parse(time.RFC3339, endParam); err != nil {
+			context.Errorf("Error parsing end:%s:%v", endParam, err)
 			http.Error(writer, err.Error(), http.StatusBadRequest)
 		}
-		duration = time.Now().Sub(start)
-	}	
-	metrics, err := readMetrics(context, boardKey, namespace, time.Now(), duration)
+	}
+
+	// evalutate oldest point in request timeline
+	duration := time.Duration(0)
+	if startParam := request.FormValue("start"); len(startParam) > 0 {
+		if start, err := time.Parse(time.RFC3339, startParam); err != nil {
+			context.Errorf("Error parsing start:%s:%v", startParam, err)
+			http.Error(writer, err.Error(), http.StatusBadRequest)
+			return
+		} else {
+			duration = end.Sub(start)
+		}
+	}
+
+	depth := int64(0)
+	if depthParam := request.FormValue("depth"); len(depthParam) > 0 {
+		if depth, err = strconv.ParseInt(depthParam, 10, 0); err != nil {
+			context.Errorf("Error parsing depth: %s:%v", depthParam, err)
+			http.Error(writer, err.Error(), http.StatusBadRequest)
+			return
+		}
+	}
+
+	metrics, err := readMetrics(context, boardKey, namespace, end, duration, int(depth))
 	if err != nil {
 		http.Error(writer, err.Error(), http.StatusBadRequest)
 		return

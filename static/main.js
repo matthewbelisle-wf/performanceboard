@@ -34,6 +34,7 @@ var initGraphs = function() {
         $('#graphs-block').append(graphElement);
         graphs[namespace.name] = graphElement.epoch({
             type: 'time.bar',
+            axes: ['bottom', 'left'],
             data: [{
                 label: namespace.name,
                 values: [{
@@ -47,17 +48,20 @@ var initGraphs = function() {
     };
 
     var updateGraph = function(namespace) {
-        $.get(namespace.api).
+        var graph = graphs[namespace.name];
+        if (graph.updated) {
+            var params = {start: graph.updated.toISOString()};
+        }
+        $.get(namespace.api, params).
             done(function(data) {
                 for (i = 0; i < data.length; i++) {
                     var start = Date.parse(data[i].start) / 1000;
                     var end = Date.parse(data[i].end) / 1000;
                     var y = end - start; // NOTE: accurate to a millisecond, no more!
-                    graphs[namespace.name].push([{time: start, y: y}]);
-                    console.log(data[i]);
-                    console.log({time: start, y: y});
+                    graph.push([{time: start, y: y * 1000}]);
                 }
             });
+        graph.updated = new Date();
     };
 
     $.get('/api/' + getBoardKey())

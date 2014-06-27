@@ -1,3 +1,9 @@
 #create-board, #graphs-block {
     margin: 80px 0;
 }
+
+.graph {
+    width: 600px;
+    height: 400px;
+    margin: 0px auto 96px auto;
+}

@@ -28,40 +28,48 @@ $('#create-board').click(function() {
 
 var initGraphs = function() {
     var graphs = {}; // {'namespace.name': graph}
-    var data = {}; // {'namespace.name': data}
 
     var initGraph = function(namespace) {
-        var graphElement = $('<div>');
+        var titleElement = $('<h1>').text(namespace.name);
+        $('#graphs-block').append(titleElement);
+        var graphElement = $('<div class="graph">');
         $('#graphs-block').append(graphElement);
-        data[namespace.name] = [];
-        updateData(namespace);
-        graphs[namespace.name] = new Rickshaw.Graph({
-            element: graphElement.get(0),
-            width: 600,
-            height: 400,
-            series: [{data: data[namespace.name], color: 'black'}]
+        graph = graphElement.epoch({
+            type: 'time.bar',
+            axes: ['bottom', 'left'],
+            queueSize: 1,
+            data: [{
+                label: namespace.name,
+                values: [{
+                    time: Date.now() / 1000,
+                    y: 0
+                }]
+            }]
         });
-        graphs[namespace.name].render();
-        console.log(graphs[namespace.name]);
+        graphs[namespace.name] = graph;
+        graph.updated = new Date();
+        updateGraph(namespace);
+        setInterval(function() { updateGraph(namespace); }, 2000);
     };
 
-    var updateData = function(namespace) {
-        $.get(namespace.api, function(result) {
-            data[namespace.name].length = 0;
-            for (i = 0; i < result.length; i++) {
-                var start = Date.parse(result[i].start);
-                var end = Date.parse(result[i].end);
-                var y = end - start; // NOTE: accurate to a millisecond, no more!
-                data[namespace.name].push({x: i, y: y});
-            }
-            graphs[namespace.name].update();
-        });
+    var updateGraph = function(namespace) {
+        var graph = graphs[namespace.name];
+        $.get(namespace.api, {start: graph.updated.toISOString()}).
+            done(function(data) {
+                for (i = 0; i < data.length; i++) {
+                    var start = Date.parse(data[i].start) / 1000;
+                    var end = Date.parse(data[i].end) / 1000;
+                    var y = end - start; // NOTE: accurate to a millisecond, no more!
+                    graph.push([{time: start, y: y * 1000}]);
+                }
+                graph.updated = new Date();
+            });
     };
 
     $.get('/api/' + getBoardKey())
-        .success(function(result) {
-            for (var i = 0; i < result.namespaces.length; i++) {
-                initGraph(result.namespaces[i]);
+        .done(function(data) {
+            for (var i = 0; i < data.namespaces.length; i++) {
+                initGraph(data.namespaces[i]);
             }
         });
 };

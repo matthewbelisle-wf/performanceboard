@@ -62,7 +62,15 @@ func getMetrics(writer http.ResponseWriter, request *http.Request) {
 		return
 	}
 	namespace := mux.Vars(request)["namespace"]
-	metrics, err := readMetrics(context, boardKey, namespace, time.Now(), 0)
+	var duration time.Duration
+	if param := request.FormValue("start"); len(param) > 0 {
+		start, err := time.Parse(time.RFC3339, param)
+		if err != nil {
+			http.Error(writer, err.Error(), http.StatusBadRequest)
+		}
+		duration = time.Now().Sub(start)
+	}	
+	metrics, err := readMetrics(context, boardKey, namespace, time.Now(), duration)
 	if err != nil {
 		http.Error(writer, err.Error(), http.StatusBadRequest)
 		return
@@ -74,7 +82,7 @@ func getMetrics(writer http.ResponseWriter, request *http.Request) {
 		http.Error(writer, err.Error(), http.StatusBadRequest)
 		return
 	}
-	writer.Header().Set("Content-Type", "application/json; charset=utf-8")
+	writer.Header().Set("Content-Type", "application/json")
 	writer.Write(b)
 }
 

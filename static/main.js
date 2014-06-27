@@ -33,10 +33,13 @@ var initGraphs = function() {
         var graphElement =$('<div class="graph">');
         $('#graphs-block').append(graphElement);
         graphs[namespace.name] = graphElement.epoch({
-            type: 'bar',
+            type: 'time.bar',
             data: [{
                 label: namespace.name,
-                values: []
+                values: [{
+                    time: Date.now() / 1000,
+                    y: 0
+                }]
             }]
         });
         updateGraph(namespace);
@@ -45,25 +48,22 @@ var initGraphs = function() {
 
     var updateGraph = function(namespace) {
         $.get(namespace.api).
-            done(function(result) {
-                var values = [];
-                for (i = 0; i < result.length; i++) {
-                    var start = Date.parse(result[i].start);
-                    var end = Date.parse(result[i].end);
+            done(function(data) {
+                for (i = 0; i < data.length; i++) {
+                    var start = Date.parse(data[i].start) / 1000;
+                    var end = Date.parse(data[i].end) / 1000;
                     var y = end - start; // NOTE: accurate to a millisecond, no more!
-                    values.push({x: i, y: y});
+                    graphs[namespace.name].push([{time: start, y: y}]);
+                    console.log(data[i]);
+                    console.log({time: start, y: y});
                 }
-                graphs[namespace.name].update([{
-                    label: namespace.name,
-                    values: values
-                }]);
             });
     };
 
     $.get('/api/' + getBoardKey())
-        .done(function(result) {
-            for (var i = 0; i < result.namespaces.length; i++) {
-                initGraph(result.namespaces[i]);
+        .done(function(data) {
+            for (var i = 0; i < data.namespaces.length; i++) {
+                initGraph(data.namespaces[i]);
             }
         });
 };

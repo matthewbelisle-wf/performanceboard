@@ -30,6 +30,7 @@ type Metric struct {
 	Meta      string         `datastore:",noindex"` // stringified JSON object
 	Start     time.Time      // UTC
 	End       time.Time      // UTC
+	Children  []Metric       `datastore:"-"`
 }
 
 // The Taxonomy table defines namespace relationships for fast lookup
@@ -125,7 +126,7 @@ func aggregateSecond(context appengine.Context, t time.Time, boardKeyString stri
 	}
 	// trim fractional second to bin aggregate computation
 	truncTime := t.Truncate(1 * time.Second)
-	metrics, err := readMetrics(context, boardKey, namespace, truncTime, 1*time.Second)
+	metrics, err := readMetrics(context, boardKey, namespace, truncTime, 1*time.Second, 0)
 	count := len(metrics)
 	if count == 0 {
 		return

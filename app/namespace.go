@@ -46,7 +46,7 @@ func getNamespaces(writer http.ResponseWriter, request *http.Request) {
 		url, _ := route.URL("board", boardKeyString, "namespace", taxonomy.Childspace)
 		namespace := Namespace{
 			Name: taxonomy.Childspace,
-			Api: AbsURL(*url, request),
+			Api:  AbsURL(*url, request),
 		}
 		namespaces = append(namespaces, namespace)
 	}

@@ -32,7 +32,8 @@ func getNamespaces(writer http.ResponseWriter, request *http.Request) {
 	context := appengine.NewContext(request)
 	boardKeyString := mux.Vars(request)["board"]
 	q := datastore.NewQuery(TaxonomyKind).
-		Filter("BoardKey =", boardKeyString)
+		Filter("BoardKey =", boardKeyString).
+		Filter("Namespace =", "")
 
 	taxonomies := []Taxonomy{}
 	if _, err := q.GetAll(context, &taxonomies); err != nil {
@@ -43,7 +44,10 @@ func getNamespaces(writer http.ResponseWriter, request *http.Request) {
 	route := router.Get("namespace")
 	for _, taxonomy := range taxonomies {
 		url, _ := route.URL("board", boardKeyString, "namespace", taxonomy.Childspace)
-		namespace := Namespace{Name: taxonomy.Childspace, Api: AbsURL(*url, request)}
+		namespace := Namespace{
+			Name: taxonomy.Childspace,
+			Api: AbsURL(*url, request),
+		}
 		namespaces = append(namespaces, namespace)
 	}
 

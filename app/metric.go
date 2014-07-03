@@ -11,6 +11,8 @@ import (
 	"time"
 )
 
+const DEFAULT_LIMIT = 100
+
 func makeMetricDtoList(metrics []Metric) []JsonResponse {
 	metricDtoList := []JsonResponse{}
 	for _, metric := range metrics {
@@ -43,6 +45,7 @@ func readMetricChildren(context appengine.Context, boardKeyString string, parent
 		children := []Metric{}
 		keys, err := q.GetAll(context, &children)
 		if err != nil {
+			context.Errorf("error reading children:%v", err)
 			return nil, err
 		}
 		if depth != 0 {
@@ -67,9 +70,9 @@ func readMetricChildren(context appengine.Context, boardKeyString string, parent
 }
 
 func readMetrics(context appengine.Context, boardKey *datastore.Key, namespace string,
-	newestTime time.Time, duration time.Duration, depth int) ([]Metric, error) {
-	// Duration is used instead of oldestTime to help support unbound queries
+	newestTime time.Time, duration time.Duration, depth int, limit int, cursor string) ([]Metric, string, error) {
 
+	// Duration is used instead of oldestTime to help support unbound queries
 	q := datastore.NewQuery(MetricKind).
 		Filter("Namespace =", namespace).
 		Filter("Start <=", newestTime).
@@ -81,30 +84,42 @@ func readMetrics(context appengine.Context, boardKey *datastore.Key, namespace s
 		q = q.Filter("Start >=", oldestTime)
 	}
 
-	// TODO use a limit and return a cursor
-	var metrics []Metric
-	keys, err := q.GetAll(context, &metrics)
-	if err != nil {
-		context.Errorf("Error reading metrics: %v", err)
-		return nil, err
-	}
-
-	// foreach Metric recursively fetch children
-	if depth != 0 {
-		for i, metric := range metrics {
-			metric.Key = keys[i]
-			if kids, err := readMetricChildren(context, boardKey.Encode(), &metric, (depth - 1)); err != nil {
-				context.Errorf("Error reading top-level Metrics children for %v:%v", metric, err)
-				return nil, err
-			} else {
-				if len(kids) > 0 {
-					metrics[i].Children = kids
-				}
-			}
+	if len(cursor) > 0 {
+		if c, err := datastore.DecodeCursor(cursor); err == nil {
+			q = q.Start(c)
+		} else {
+			return []Metric{}, "", err
 		}
 	}
 
-	return metrics, nil
+	var metrics []Metric
+	iter := q.Run(context)
+	for limit < 0 || len(metrics) < limit {
+		var metric Metric
+		if key, err := iter.Next(&metric); err == nil {
+			metric.Key = key
+		} else {
+			break
+		}
+		if depth != 0 { // recursively fetch children
+			if kids, err := readMetricChildren(context, boardKey.Encode(), &metric, (depth - 1)); err == nil {
+				if len(kids) > 0 {
+					metric.Children = kids
+				}
+			}
+		}
+		metrics = append(metrics, metric)
+	}
+
+	if len(metrics) == limit {
+		if c, err := iter.Cursor(); err == nil {
+			cursor = c.String()
+		}
+	} else {
+		cursor = ""
+	}
+
+	return metrics, cursor, nil
 }
 
 // HTTP handlers
@@ -149,20 +164,37 @@ func getMetrics(writer http.ResponseWriter, request *http.Request) {
 		}
 	}
 
-	metrics, err := readMetrics(context, boardKey, namespace, end, duration, int(depth))
+	limit := int64(DEFAULT_LIMIT)
+	if limitParam := request.FormValue("limit"); len(limitParam) > 0 {
+		if limit, err = strconv.ParseInt(limitParam, 10, 0); err != nil {
+			context.Errorf("Error parsing limit: %s:%v", limitParam, err)
+			http.Error(writer, err.Error(), http.StatusBadRequest)
+			return
+		}
+	}
+
+	cursor := request.FormValue("cursor")
+
+	metrics, cursor, err := readMetrics(context, boardKey, namespace, end, duration, int(depth), int(limit), cursor)
 	if err != nil {
 		http.Error(writer, err.Error(), http.StatusBadRequest)
 		return
 	}
 
 	metricsDtoList := makeMetricDtoList(metrics)
-	b, err := json.Marshal(metricsDtoList)
-	if err != nil {
-		http.Error(writer, err.Error(), http.StatusBadRequest)
-		return
+	response := JsonResponse{
+		"result": metricsDtoList,
 	}
-	writer.Header().Set("Content-Type", "application/json")
-	writer.Write(b)
+	if len(cursor) > 0 {
+		url := request.URL
+		values := url.Query()
+		values.Set("cursor", cursor)
+		values.Set("limit", strconv.Itoa(int(limit)))
+		url.RawQuery = values.Encode()
+		response["next"] = AbsURL(*url, request)
+	}
+
+	response.Write(writer)
 }
 
 // TODO memcache the board entity and validate boardKey against it

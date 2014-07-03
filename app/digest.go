@@ -126,7 +126,7 @@ func aggregateSecond(context appengine.Context, t time.Time, boardKeyString stri
 	}
 	// trim fractional second to bin aggregate computation
 	truncTime := t.Truncate(1 * time.Second)
-	metrics, err := readMetrics(context, boardKey, namespace, truncTime, 1*time.Second, 0)
+	metrics, _, err := readMetrics(context, boardKey, namespace, truncTime, 1*time.Second, 0, -1, "")
 	count := len(metrics)
 	if count == 0 {
 		return

@@ -185,21 +185,20 @@ type AggregateMetric struct {
 // }
 
 // This is the entry point into the deferred context of input digestion
-var digestPost = delay.Func("key", func(c appengine.Context, postKeyString string) {
+var digestPost = delay.Func("key", func(c appengine.Context, postKey *datastore.Key) {
 	post := Post{}
-	postKey, _ := datastore.DecodeKey(postKeyString)
 	if err := datastore.Get(c, postKey, &post); err != nil {
-		c.Errorf("Failed digestPost(): %s\nCould not Get: %s", postKeyString, err)
+		c.Errorf("Failed digestPost(): %s\nCould not Get: %s", postKey, err)
 		return
 	}
 	metric := Metric{}
 	if err := json.Unmarshal([]byte(post.Body), &metric); err != nil {
-		c.Errorf("Failed digestPost(): %s\nCould not Unmarshal: %s", postKeyString, err)
+		c.Errorf("Failed digestPost(): %s\nCould not Unmarshal: %s", postKey, err)
 		return
 	}
 	metricKey := datastore.NewKey(c, MetricKind, metric.Namespace, 0, postKey)
 	if err := metric.Put(c, metricKey); err != nil {
-		c.Errorf("Failed digestPost(): %s\nCould not Put: %s", postKeyString, err)
+		c.Errorf("Failed digestPost(): %s\nCould not Put: %s", postKey, err)
 		return
 	}
 })

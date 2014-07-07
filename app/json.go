@@ -7,9 +7,16 @@ import (
 
 type JsonResponse map[string]interface{}
 
-func (response JsonResponse) Write(writer http.ResponseWriter) {
-	writer.Header().Set("content-type", "application/json")
-	bytes, _ := json.MarshalIndent(response, "", "  ")
-	writer.Write(bytes)
-	writer.Write([]byte{'\n'})
+func (r JsonResponse) Write(w http.ResponseWriter) error {
+	return WriteJsonResponse(r, w)
+}
+
+func WriteJsonResponse(v interface{}, w http.ResponseWriter) error {
+	w.Header().Set("content-type", "application/json")
+	bytes, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+	w.Write(bytes)
+	return nil
 }

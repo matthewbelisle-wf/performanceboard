@@ -185,7 +185,7 @@ type AggregateMetric struct {
 // }
 
 // This is the entry point into the deferred context of input digestion
-var digestPost = delay.Func("key", func(c appengine.Context, postKey *datastore.Key) {
+var digestPost = delay.Func("digestPost", func(c appengine.Context, postKey *datastore.Key) {
 	post := Post{}
 	if err := datastore.Get(c, postKey, &post); err != nil {
 		c.Errorf("Failed digestPost(): %s\nCould not Get: %s", postKey, err)

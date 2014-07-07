@@ -26,19 +26,19 @@ func (board *Board) ServeHTTP(writer http.ResponseWriter, request *http.Request)
 // HTTP handlers
 
 func getBoard(w http.ResponseWriter, r *http.Request) {
-	keyString := mux.Vars(r)["board"]
-	key, err := datastore.DecodeKey(keyString)
+	boardKeyString := mux.Vars(r)["board"]
+	boardKey, err := datastore.DecodeKey(boardKeyString)
 	if err != nil {
-		http.Error(w, "Invalid key: %s"+keyString, http.StatusBadRequest)
+		http.Error(w, "Invalid boardKey: %s"+boardKeyString, http.StatusBadRequest)
 	}
 	q := datastore.NewQuery(MetricKind).
-		Ancestor(key).
+		Ancestor(boardKey).
 		Project("namespace").
 		Distinct()
 	c := appengine.NewContext(r)
-	metrics := map[string]*Metric{}
-	topMetrics := []*Metric{}
-	for t := q.Run(c);; {
+	namespaces := map[string]*Namespace{} // {metricKeyString: *namespace}
+	topNamespaces := []*Namespace{}
+	for t := q.Run(c); ; {
 		metric := Metric{}
 		metricKey, err := t.Next(&metric)
 		if err == datastore.Done {
@@ -47,19 +47,23 @@ func getBoard(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}
-		metrics[metricKey.Encode()] = &metric
+		api, _ := router.Get("namespace").URL("board", boardKey.Encode(), "namespace", metric.Namespace)
+		namespaces[metricKey.Encode()] = &Namespace{
+			Name: metricKey.StringID(),
+			Api:  AbsURL(*api, r),
+		}
 	}
-	for metricKeyString, metric := range metrics {
-		metricKey, _ := datastore.DecodeKey(metricKeyString)
-		if parentKey := metricKey.Parent(); parentKey.Kind() == MetricKind {
-			parent, _ := metrics[parentKey.Encode()]
-			parent.Children = append(parent.Children, *metric)
+	for metricKeyString, namespace := range namespaces {
+		key, _ := datastore.DecodeKey(metricKeyString)
+		if parentKey := key.Parent(); parentKey.Kind() == MetricKind {
+			parent, _ := namespaces[parentKey.Encode()]
+			parent.Children = append(parent.Children, *namespace)
 		} else {
-			topMetrics = append(topMetrics, metric)
+			topNamespaces = append(topNamespaces, namespace)
 		}
 	}
 	JsonResponse{
-		"metrics": topMetrics,
+		"namespaces": topNamespaces,
 	}.Write(w)
 }
 

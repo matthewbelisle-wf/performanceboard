@@ -7,7 +7,7 @@ import (
 	"github.com/matthewbelisle-wf/jsonproperty"
 	"io/ioutil"
 	"net/http"
-	"strconv"
+	// "strconv"
 	"time"
 )
 
@@ -43,53 +43,63 @@ func (m *Metric) Save(c chan<- datastore.Property) error {
 	return datastore.SaveStruct(m, c)
 }
 
-// Get() and Put() are for recursive getting and putting
-
-func (m *Metric) Get(c appengine.Context, key *datastore.Key, depth int) error {
-	return nil
-}
-
+// Put() recursively puts metrics into the datastore
 func (m *Metric) Put(c appengine.Context, key *datastore.Key) error {
+	if _, err := datastore.Put(c, key, m); err != nil {
+		c.Errorf("Failed metric.Put()\nCould not do datastore.Put(): %s, %s", key.Encode(), err)
+		return err
+	}
+	for i, child := range m.Children {
+		childKey := datastore.NewKey(c, MetricKind, child.Namespace, int64(i), key)
+		child.Namespace = m.Namespace + "." + child.Namespace
+		if err := child.Put(c, childKey); err != nil {
+			c.Errorf("Failed metric.Put()\nCould not do child.Put(): %s, %s", childKey.Encode(), err)
+			return err
+		}
+	}
 	return nil
 }
 
 // HTTP handlers
 
+func getMetric(w http.ResponseWriter, r *http.Request) {
+}
+
 func getMetrics(w http.ResponseWriter, r *http.Request) {
-	c := appengine.NewContext(r)
-	vars := mux.Vars(r)
-	encodedKey := vars["board"]
-	boardKey, err := datastore.DecodeKey(encodedKey)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
-	namespace := vars["namespace"]
+	// c := appengine.NewContext(r)
+	// vars := mux.Vars(r)
+	// encodedKey := vars["board"]
+	// boardKey, err := datastore.DecodeKey(encodedKey)
+	// if err != nil {
+	// 	http.Error(w, err.Error(), http.StatusBadRequest)
+	// 	return
+	// }
+	// namespace := vars["namespace"]
 
-	// Evalutates oldest point in request timeline
-	var start time.Time
-	if startParam := r.FormValue("start"); startParam != "" {
-		if start, err = time.Parse(time.RFC3339, startParam); err != nil {
-			http.Error(w, "Invalid start param: "+startParam, http.StatusBadRequest)
-		}
-	}
+	// // Evalutates oldest point in request timeline
+	// var start time.Time
+	// if startParam := r.FormValue("start"); startParam != "" {
+	// 	if start, err = time.Parse(time.RFC3339, startParam); err != nil {
+	// 		http.Error(w, "Invalid start param: "+startParam, http.StatusBadRequest)
+	// 	}
+	// }
 
-	// Evalutates newest point in request timeline
-	var end time.Time
-	if endParam := r.FormValue("end"); endParam != "" {
-		if end, err = time.Parse(time.RFC3339, endParam); err != nil {
-			http.Error(w, "Invalid end param: "+endParam, http.StatusBadRequest)
-		}
-	}
+	// // Evalutates newest point in request timeline
+	// var end time.Time
+	// if endParam := r.FormValue("end"); endParam != "" {
+	// 	if end, err = time.Parse(time.RFC3339, endParam); err != nil {
+	// 		http.Error(w, "Invalid end param: "+endParam, http.StatusBadRequest)
+	// 	}
+	// }
 
-	depth := int64(0)
-	if depthParam := r.FormValue("depth"); depthParam != "" {
-		if depth, err = strconv.ParseInt(depthParam, 10, 0); err != nil {
-			c.Errorf("Error parsing depth: %s", err)
-			http.Error(w, err.Error(), http.StatusBadRequest)
-			return
-		}
-	}
+	// depth := int64(0)
+	// if depthParam := r.FormValue("depth"); depthParam != "" {
+	// 	if depth, err = strconv.ParseInt(depthParam, 10, 0); err != nil {
+	// 		c.Errorf("Error parsing depth: %s", err)
+	// 		http.Error(w, err.Error(), http.StatusBadRequest)
+	// 		return
+	// 	}
+	// }
 }
 
 // TODO memcache the board entity and validate boardKey against it

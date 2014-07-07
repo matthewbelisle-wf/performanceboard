@@ -4,6 +4,7 @@ import (
 	"appengine"
 	"appengine/datastore"
 	"appengine/user"
+	"github.com/gorilla/mux"
 	"net/http"
 )
 
@@ -23,6 +24,15 @@ func (board *Board) ServeHTTP(writer http.ResponseWriter, request *http.Request)
 }
 
 // HTTP handlers
+
+func getBoard(w http.ResponseWriter, r *http.Request) {
+	keyString := mux.Vars(r)["board"]
+	key, err := datastore.DecodeKey(keyString)
+	if err != nil {
+		http.Error(w, "Invalid key: %s"+keyString, http.StatusBadRequest)
+	}
+	
+}
 
 func createBoard(writer http.ResponseWriter, request *http.Request) {
 	context := appengine.NewContext(request)

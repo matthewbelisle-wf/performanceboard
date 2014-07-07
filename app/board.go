@@ -11,16 +11,18 @@ import (
 const BoardKind = "Board"
 
 type Board struct {
-	Key    *datastore.Key `datastore:"-"`
-	UserID string
+	UserID string `datastore:"user_id"`
 }
 
-func (board *Board) ServeHTTP(writer http.ResponseWriter, request *http.Request) {
-	api, _ := router.Get("board").URL("board", board.Key.Encode())
-	Json{
-		"board": board.Key.Encode(),
-		"api":   AbsURL(*api, request),
-	}.Write(writer)
+func (b *Board) Json(key *datastore.Key) (*Json, error) {
+	namespaces, err := b.Namespaces(key)
+	if err != nil {
+		return err
+	}
+	return &Json{
+		"board":      key.Encode(),
+		"namespaces": b.Namespaces(key),
+	}
 }
 
 // HTTP handlers
@@ -73,6 +75,12 @@ func createBoard(writer http.ResponseWriter, request *http.Request) {
 	if u := user.Current(context); u != nil {
 		board.UserID = u.ID
 	}
-	board.Key, _ = datastore.Put(context, datastore.NewIncompleteKey(context, BoardKind, nil), &board)
-	board.ServeHTTP(writer, request)
+	key, _ = datastore.Put(context, datastore.NewIncompleteKey(context, BoardKind, nil), &board)
+	json, err := board.Json(key)
+	if err != nil {
+
+	}
+	api, _ := router.Get("board").URL("board", key.Encode())
+	json["api"] = AbsURL(*api, request)
+	json.Write(w)
 }

@@ -7,7 +7,7 @@ import (
 	"github.com/matthewbelisle-wf/jsonproperty"
 	"io/ioutil"
 	"net/http"
-	// "strconv"
+	"strconv"
 	"time"
 )
 
@@ -107,40 +107,49 @@ func getMetric(w http.ResponseWriter, r *http.Request) {
 }
 
 func getMetrics(w http.ResponseWriter, r *http.Request) {
-	// c := appengine.NewContext(r)
-	// vars := mux.Vars(r)
-	// encodedKey := vars["board"]
-	// boardKey, err := datastore.DecodeKey(encodedKey)
-	// if err != nil {
-	// 	http.Error(w, err.Error(), http.StatusBadRequest)
-	// 	return
-	// }
-	// namespace := vars["namespace"]
+	c := appengine.NewContext(r)
+	vars := mux.Vars(r)
+	encodedKey := vars["board"]
+	boardKey, err := datastore.DecodeKey(encodedKey)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	namespace := vars["namespace"]
 
-	// // Evalutates oldest point in request timeline
-	// var start time.Time
-	// if startParam := r.FormValue("start"); startParam != "" {
-	// 	if start, err = time.Parse(time.RFC3339, startParam); err != nil {
-	// 		http.Error(w, "Invalid start param: "+startParam, http.StatusBadRequest)
-	// 	}
-	// }
+	// Evalutates oldest point in request timeline
+	var start time.Time
+	if startParam := r.FormValue("start"); startParam != "" {
+		if start, err = time.Parse(time.RFC3339, startParam); err != nil {
+			http.Error(w, "Invalid start param: "+startParam, http.StatusBadRequest)
+			return
+		}
+	}
 
-	// // Evalutates newest point in request timeline
-	// var end time.Time
-	// if endParam := r.FormValue("end"); endParam != "" {
-	// 	if end, err = time.Parse(time.RFC3339, endParam); err != nil {
-	// 		http.Error(w, "Invalid end param: "+endParam, http.StatusBadRequest)
-	// 	}
-	// }
+	// Evalutates newest point in request timeline
+	var end time.Time
+	if endParam := r.FormValue("end"); endParam != "" {
+		if end, err = time.Parse(time.RFC3339, endParam); err != nil {
+			http.Error(w, "Invalid end param: "+endParam, http.StatusBadRequest)
+			return
+		}
+	}
 
-	// depth := int64(0)
-	// if depthParam := r.FormValue("depth"); depthParam != "" {
-	// 	if depth, err = strconv.ParseInt(depthParam, 10, 0); err != nil {
-	// 		c.Errorf("Error parsing depth: %s", err)
-	// 		http.Error(w, err.Error(), http.StatusBadRequest)
-	// 		return
-	// 	}
-	// }
+	depth := int64(0)
+	if depthParam := r.FormValue("depth"); depthParam != "" {
+		if depth, err = strconv.ParseInt(depthParam, 10, 0); err != nil {
+			http.Error(w, "Invalid depth param: "+depthParam, http.StatusBadRequest)
+			return
+		}
+	}
+	Json{
+		"namespace": namespace,
+		"start":     start,
+		"end":       end,
+		"depth":     depth,
+		"c":         c,
+		"boardKey":  boardKey,
+	}.Write(w)
 }
 
 // TODO memcache the board entity and validate boardKey against it

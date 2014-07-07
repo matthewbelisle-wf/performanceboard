@@ -5,13 +5,13 @@ import (
 	"net/http"
 )
 
-type JsonResponse map[string]interface{}
+type Json map[string]interface{}
 
-func (r JsonResponse) Write(w http.ResponseWriter) error {
-	return WriteJsonResponse(r, w)
+func (r Json) Write(w http.ResponseWriter) error {
+	return WriteJson(r, w)
 }
 
-func WriteJsonResponse(v interface{}, w http.ResponseWriter) error {
+func WriteJson(v interface{}, w http.ResponseWriter) error {
 	w.Header().Set("content-type", "application/json")
 	bytes, err := json.Marshal(v)
 	if err != nil {

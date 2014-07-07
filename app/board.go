@@ -17,7 +17,7 @@ type Board struct {
 
 func (board *Board) ServeHTTP(writer http.ResponseWriter, request *http.Request) {
 	api, _ := router.Get("board").URL("board", board.Key.Encode())
-	JsonResponse{
+	Json{
 		"board": board.Key.Encode(),
 		"api":   AbsURL(*api, request),
 	}.Write(writer)
@@ -62,7 +62,7 @@ func getBoard(w http.ResponseWriter, r *http.Request) {
 			topNamespaces = append(topNamespaces, namespace)
 		}
 	}
-	JsonResponse{
+	Json{
 		"namespaces": topNamespaces,
 	}.Write(w)
 }

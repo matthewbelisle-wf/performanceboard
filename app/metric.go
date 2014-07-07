@@ -105,7 +105,7 @@ func getMetric(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	WriteJsonResponse(metric, w)
+	WriteJson(metric, w)
 }
 
 func getMetrics(w http.ResponseWriter, r *http.Request) {

@@ -36,8 +36,8 @@ func getBoard(w http.ResponseWriter, r *http.Request) {
 		Project("namespace").
 		Distinct()
 	c := appengine.NewContext(r)
-	metrics := map[*datastore.Key]Metric{}
-	topMetrics := []Metric{}
+	metrics := map[string]*Metric{}
+	topMetrics := []*Metric{}
 	for t := q.Run(c);; {
 		metric := Metric{}
 		metricKey, err := t.Next(&metric)
@@ -47,12 +47,13 @@ func getBoard(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}
-		metrics[metricKey] = metric
+		metrics[metricKey.Encode()] = &metric
 	}
-	for metricKey, metric := range metrics {
+	for metricKeyString, metric := range metrics {
+		metricKey, _ := datastore.DecodeKey(metricKeyString)
 		if parentKey := metricKey.Parent(); parentKey.Kind() == MetricKind {
-			parent := metrics[parentKey]
-			parent.Children = append(parent.Children, metric)
+			parent, _ := metrics[parentKey.Encode()]
+			parent.Children = append(parent.Children, *metric)
 		} else {
 			topMetrics = append(topMetrics, metric)
 		}

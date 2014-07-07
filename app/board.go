@@ -31,7 +31,35 @@ func getBoard(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		http.Error(w, "Invalid key: %s"+keyString, http.StatusBadRequest)
 	}
-	
+	q := datastore.NewQuery(MetricKind).
+		Ancestor(key).
+		Project("namespace").
+		Distinct()
+	c := appengine.NewContext(r)
+	metrics := map[*datastore.Key]Metric{}
+	topMetrics := []Metric{}
+	for t := q.Run(c);; {
+		metric := Metric{}
+		metricKey, err := t.Next(&metric)
+		if err == datastore.Done {
+			break
+		}
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
+		metrics[metricKey] = metric
+	}
+	for metricKey, metric := range metrics {
+		if parentKey := metricKey.Parent(); parentKey.Kind() == MetricKind {
+			parent := metrics[parentKey]
+			parent.Children = append(parent.Children, metric)
+		} else {
+			topMetrics = append(topMetrics, metric)
+		}
+	}
+	JsonResponse{
+		"metrics": topMetrics,
+	}.Write(w)
 }
 
 func createBoard(writer http.ResponseWriter, request *http.Request) {

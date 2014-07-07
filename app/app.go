@@ -22,7 +22,7 @@ func init() {
 	router.HandleFunc("/api/{board}/{namespace}", getMetrics).Methods("GET").Name("namespace")
 	router.HandleFunc("/api/{board}", getBoard).Methods("GET").Name("board")
 	router.HandleFunc("/api/{board}", postMetric).Methods("POST")
- 	router.HandleFunc("/api/", createBoard).Methods("POST")
+	router.HandleFunc("/api/", createBoard).Methods("POST")
 	router.HandleFunc("/api/", methodNotAllowed)
 	router.HandleFunc("/{client:.*}", client)
 	http.Handle("/", router)

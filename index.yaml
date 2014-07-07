@@ -21,13 +21,4 @@ indexes:
 - kind: Metric
   ancestor: yes
   properties:
-  - name: Namespace
-  - name: Start
-    direction: desc
-
-- kind: Taxonomy
-  properties:
-  - name: BoardKey
-  - name: Namespace
-  - name: Start
-    direction: desc
+  - name: namespace

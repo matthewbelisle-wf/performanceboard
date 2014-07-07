@@ -44,7 +44,7 @@ func (m *Metric) Save(c chan<- datastore.Property) error {
 }
 
 // Get() and Put() recursively gets/puts metrics into the datastore
-func (m *Metric) Get(c appengine.Context, key *datastore.Key) error {
+func (m *Metric) GetChildren(c appengine.Context, key *datastore.Key) ([]Metric, error) {
 	q := datastore.NewQuery(MetricKind).Ancestor(key)
 	hierarchy := map[string]*Metric{} // {keyString: *metric}
 	for t := q.Run(c); ; {
@@ -53,12 +53,10 @@ func (m *Metric) Get(c appengine.Context, key *datastore.Key) error {
 		if err == datastore.Done {
 			break
 		} else if err != nil {
-			return err
+			return nil, err
 		}
 		hierarchy[childKey.Encode()] = &child
 	}
-	// Resetting hierarchy since ancestor filters limit results to the specified entity *and* its descendants.
-	hierarchy[key.Encode()] = m
 
 	for keyString, child := range hierarchy {
 		childKey, _ := datastore.DecodeKey(keyString)
@@ -67,7 +65,7 @@ func (m *Metric) Get(c appengine.Context, key *datastore.Key) error {
 			parent.Children = append(parent.Children, *child)
 		}
 	}
-	return nil
+	return hierarchy[key.Encode()].Children, nil
 }
 
 func (m *Metric) Put(c appengine.Context, key *datastore.Key) error {
@@ -101,7 +99,7 @@ func getMetric(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Metric not found: "+keyString, http.StatusNotFound)
 		return
 	}
-	if err = metric.Get(c, key); err != nil {
+	if metric.Children, err = metric.GetChildren(c, key); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}

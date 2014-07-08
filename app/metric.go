@@ -17,6 +17,8 @@ import (
 const MetricKind = "Metric"
 
 type Metric struct {
+	Key       *datastore.Key            `datastore:"-" json:"key"`
+	Context   appengine.Context         `datastore:"-" json:"-"`
 	Namespace string                    `datastore:"namespace" json:"namespace"`
 	Meta      jsonproperty.JsonProperty `datastore:"-" json:"meta" jsonproperty:"meta"`
 	Start     time.Time                 `datastore:"start" json:"start"`
@@ -46,27 +48,26 @@ func (m *Metric) Save(c chan<- datastore.Property) error {
 }
 
 // Get() and Put() recursively gets/puts metrics into the datastore
-func (m *Metric) GetChildren(c appengine.Context, key *datastore.Key, depth int64) (<-chan Metrics, <-chan error) {
-	c1 := make(chan Metrics, 1)
-	c2 := make(chan error, 1)
+func (m *Metric) LoadChildren(depth int64) <-chan error {
+	errChan := make(chan error, 1) // TODO: Remove 1?
 	go func() {
-		q := datastore.NewQuery(MetricKind).Ancestor(key)
+		q := datastore.NewQuery(MetricKind).Ancestor(m.Key)
 		if depth >= 0 {
 			q.Filter("depth <=", m.Depth+depth)
 		}
 
 		hierarchy := map[string]*Metric{} // {keyString: *metric}
-		for t := q.Run(c); ; {
-			child := Metric{}
-			childKey, err := t.Next(&child)
+		var err error
+		for t := q.Run(m.Context); ; {
+			child := Metric{Context: m.Context}
+			child.Key, err = t.Next(&child)
 			if err == datastore.Done {
 				break
 			} else if err != nil {
-				c1 <- nil
-				c2 <- err
+				errChan <- err
 				return
 			}
-			hierarchy[childKey.Encode()] = &child
+			hierarchy[child.Key.Encode()] = &child
 		}
 		for keyString, child := range hierarchy {
 			childKey, _ := datastore.DecodeKey(keyString)
@@ -76,23 +77,24 @@ func (m *Metric) GetChildren(c appengine.Context, key *datastore.Key, depth int6
 			}
 		}
 
-		c1 <- hierarchy[key.Encode()].Children // Top level metric
-		c2 <- nil
+		m.Children = hierarchy[m.Key.Encode()].Children // Top level metric
+		errChan <- nil
 	}()
-	return c1, c2
+	return errChan
 }
 
-func (m *Metric) Put(c appengine.Context, key *datastore.Key) error {
-	if _, err := datastore.Put(c, key, m); err != nil {
-		c.Errorf("Failed metric.Put()\nCould not do datastore.Put(): %s, %s", key.Encode(), err)
+func (m *Metric) Put() error {
+	if _, err := datastore.Put(m.Context, m.Key, m); err != nil {
+		m.Context.Errorf("Failed metric.Put()\nCould not do datastore.Put(): %s, %s", m.Key.Encode(), err)
 		return err
 	}
 	for i, child := range m.Children {
-		childKey := datastore.NewKey(c, MetricKind, child.Namespace, int64(i), key)
+		child.Key = datastore.NewKey(m.Context, MetricKind, child.Namespace, int64(i), m.Key)
+		child.Context = m.Context
+		// TODO: Move these to save?
 		child.Namespace = m.Namespace + "." + child.Namespace
 		child.Depth = m.Depth + 1
-		if err := child.Put(c, childKey); err != nil {
-			c.Errorf("Failed metric.Put()\nCould not do child.Put(): %s, %s", childKey.Encode(), err)
+		if err := child.Put(); err != nil {
 			return err
 		}
 	}
@@ -109,18 +111,16 @@ func getMetric(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	c := appengine.NewContext(r)
-	metric := Metric{}
+	metric := Metric{Context: c, Key: key}
 	if err = datastore.Get(c, key, &metric); err != nil {
 		http.Error(w, "Metric not found: "+keyString, http.StatusNotFound)
 		return
 	}
 
-	mChan, eChan := metric.GetChildren(c, key, -1)
-	if err := <-eChan; err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+	if err := <-metric.LoadChildren(-1); err != nil {
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		return
 	}
-	metric.Children = <-mChan
 	WriteJson(metric, w)
 }
 
@@ -169,30 +169,26 @@ func getMetrics(w http.ResponseWriter, r *http.Request) {
 
 	// Assembles metrics
 	metrics := Metrics{}
-	childrenChans := []<-chan Metrics{}
 	errChans := []<-chan error{}
 	t := q.Run(c)
 	for {
-		metric := Metric{}
-		key, err := t.Next(&metric)
+		metric := Metric{Context: c}
+		metric.Key, err = t.Next(&metric)
 		if err == datastore.Done {
 			break
 		} else if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 			return
 		}
 		metrics = append(metrics, &metric)
-		cChan, eChan := metric.GetChildren(c, key, 1)
-		childrenChans = append(childrenChans, cChan)
-		errChans = append(errChans, eChan)
+		errChans = append(errChans, metric.LoadChildren(1))
 	}
 
-	for i, metric := range metrics {
-		if err := <-errChans[i]; err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+	for _, errChan := range errChans {
+		if err := <-errChan; err != nil {
+			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 			return
 		}
-		metric.Children = <-childrenChans[i]
 	}
 
 	Json{

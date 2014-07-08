@@ -11,35 +11,38 @@ import (
 const BoardKind = "Board"
 
 type Board struct {
-	UserID string `datastore:"user_id"`
+	Key     *datastore.Key    `datastore:"-" json:"key"`
+	Context appengine.Context `datastore:"-" json:"-"`
+	UserID  string            `datastore:"user_id" json:"-"`
 }
 
-func (b *Board) Json(c appengine.Context, key *datastore.Key) (*Json, error) {
-	namespaces, err := b.Namespaces(c, key)
+func (b *Board) Json() (*Json, error) {
+	namespaces, err := b.Namespaces()
 	if err != nil {
 		return nil, err
 	}
 	return &Json{
-		"board":      key.Encode(),
+		"board":      b.Key.Encode(),
 		"namespaces": namespaces,
 	}, nil
 }
 
-func (b *Board) Namespaces(c appengine.Context, key *datastore.Key) (Namespaces, error) {
+func (b *Board) Namespaces() (Namespaces, error) {
 	q := datastore.NewQuery(MetricKind).
-		Ancestor(key).
+		Ancestor(b.Key).
 		Project("namespace").
 		Distinct()
 	hierarchy := map[string]*Namespace{} // {metricKeyString: *namespace}
-	for t := q.Run(c); ; {
-		metric := Metric{}
-		metricKey, err := t.Next(&metric)
+	var err error
+	for t := q.Run(b.Context); ; {
+		metric := Metric{Context: b.Context}
+		metric.Key, err = t.Next(&metric)
 		if err == datastore.Done {
 			break
 		} else if err != nil {
 			return nil, err
 		}
-		hierarchy[metricKey.Encode()] = &Namespace{
+		hierarchy[metric.Key.Encode()] = &Namespace{
 			Name: metric.Namespace,
 		}
 	}
@@ -66,12 +69,12 @@ func getBoard(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	c := appengine.NewContext(r)
-	board := Board{}
+	board := Board{Context: c, Key: key}
 	if err = datastore.Get(c, key, &board); err != nil {
 		http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
 		return
 	}
-	json, err := board.Json(c, key)
+	json, err := board.Json()
 	if err != nil {
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		return
@@ -81,16 +84,17 @@ func getBoard(w http.ResponseWriter, r *http.Request) {
 
 func createBoard(w http.ResponseWriter, r *http.Request) {
 	c := appengine.NewContext(r)
-	board := Board{}
+	board := Board{Context: c}
 	if u := user.Current(c); u != nil {
 		board.UserID = u.ID
 	}
-	key, err := datastore.Put(c, datastore.NewIncompleteKey(c, BoardKind, nil), &board)
+	var err error
+	board.Key, err = datastore.Put(c, datastore.NewIncompleteKey(c, BoardKind, nil), &board)
 	if err != nil {
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		return
 	}
-	json, err := board.Json(c, key)
+	json, err := board.Json()
 	if err != nil {
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		return

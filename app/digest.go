@@ -191,14 +191,13 @@ var digestPost = delay.Func("digestPost", func(c appengine.Context, postKey *dat
 		c.Errorf("Failed digestPost(): %s\nCould not Get: %s", postKey, err)
 		return
 	}
-	metric := Metric{}
+	metric := Metric{Context: c}
 	if err := json.Unmarshal([]byte(post.Body), &metric); err != nil {
 		c.Errorf("Failed digestPost(): %s\nCould not Unmarshal: %s", postKey, err)
 		return
 	}
-	metricKey := datastore.NewKey(c, MetricKind, metric.Namespace, 0, postKey)
-	if err := metric.Put(c, metricKey); err != nil {
-		c.Errorf("Failed digestPost(): %s\nCould not Put: %s", postKey, err)
+	metric.Key = datastore.NewKey(c, MetricKind, metric.Namespace, 0, postKey)
+	if err := metric.Put(); err != nil {
 		return
 	}
 })

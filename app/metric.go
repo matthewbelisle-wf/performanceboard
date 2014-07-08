@@ -21,8 +21,11 @@ type Metric struct {
 	Meta      jsonproperty.JsonProperty `datastore:"-" json:"meta" jsonproperty:"meta"`
 	Start     time.Time                 `datastore:"start" json:"start"`
 	End       time.Time                 `datastore:"end" json:"end"`
-	Children  []*Metric                 `datastore:"-" json:"children"`
+	Depth     int64                     `datastore:"depth" json:"-"`
+	Children  Metrics                   `datastore:"-" json:"children"`
 }
+
+type Metrics []*Metric
 
 // Load() and Save() handle the meta property.
 
@@ -43,16 +46,23 @@ func (m *Metric) Save(c chan<- datastore.Property) error {
 }
 
 // Get() and Put() recursively gets/puts metrics into the datastore
-func (m *Metric) GetChildren(c appengine.Context, key *datastore.Key) ([]*Metric, error) {
+func (m *Metric) GetChildren(c appengine.Context, key *datastore.Key, depth int64) (<-chan Metrics, <-chan error) {
+	c1 := make(chan Metrics)
+	c2 := make(chan error)
 	q := datastore.NewQuery(MetricKind).Ancestor(key)
+	if depth >= 0 {
+		q.Filter("depth <=", m.Depth + depth)
+	}
 	hierarchy := map[string]*Metric{} // {keyString: *metric}
-	for t := q.Run(c); ; {
+	for t := q.Run(c);; {
 		child := Metric{}
 		childKey, err := t.Next(&child)
 		if err == datastore.Done {
 			break
 		} else if err != nil {
-			return nil, err
+			c1 <- nil
+			c2 <- err
+			return c1, c2
 		}
 		hierarchy[childKey.Encode()] = &child
 	}
@@ -64,7 +74,9 @@ func (m *Metric) GetChildren(c appengine.Context, key *datastore.Key) ([]*Metric
 			parent.Children = append(parent.Children, child)
 		}
 	}
-	return hierarchy[key.Encode()].Children, nil
+	c1 <- hierarchy[key.Encode()].Children
+	c2 <- nil
+	return c1, c2
 }
 
 func (m *Metric) Put(c appengine.Context, key *datastore.Key) error {
@@ -75,6 +87,7 @@ func (m *Metric) Put(c appengine.Context, key *datastore.Key) error {
 	for i, child := range m.Children {
 		childKey := datastore.NewKey(c, MetricKind, child.Namespace, int64(i), key)
 		child.Namespace = m.Namespace + "." + child.Namespace
+		child.Depth = m.Depth + 1
 		if err := child.Put(c, childKey); err != nil {
 			c.Errorf("Failed metric.Put()\nCould not do child.Put(): %s, %s", childKey.Encode(), err)
 			return err
@@ -98,10 +111,13 @@ func getMetric(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Metric not found: "+keyString, http.StatusNotFound)
 		return
 	}
-	if metric.Children, err = metric.GetChildren(c, key); err != nil {
+
+	mChan, eChan := metric.GetChildren(c, key, -1)
+	if err := <-eChan; err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+	metric.Children = <-mChan
 	WriteJson(metric, w)
 }
 
@@ -145,16 +161,8 @@ func getMetrics(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	namespaces, err := board.Namespaces(c, boardKey)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	childspaces := namespaces.Childspaces(namespace)
-
 	Json{
-		"childspaces": childspaces,
+		"namespace": namespace,
 		"start": start,
 		"end": end,
 	}.Write(w)

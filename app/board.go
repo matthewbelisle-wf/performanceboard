@@ -40,7 +40,7 @@ func (b *Board) Namespaces(c appengine.Context, key *datastore.Key) (Namespaces,
 			return nil, err
 		}
 		hierarchy[metricKey.Encode()] = &Namespace{
-			Name: metricKey.StringID(),
+			Name: metric.Namespace,
 		}
 	}
 	namespaces := Namespaces{}

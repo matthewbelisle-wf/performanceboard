@@ -22,7 +22,7 @@ type Metric struct {
 	Meta      jsonproperty.JsonProperty `datastore:"-" json:"meta" jsonproperty:"meta"`
 	Start     time.Time                 `datastore:"start" json:"start"`
 	End       time.Time                 `datastore:"end" json:"end"`
-	Children  []Metric                  `datastore:"-" json:"children"`
+	Children  []*Metric                 `datastore:"-" json:"children"`
 }
 
 // Load() and Save() handle the meta property.
@@ -44,7 +44,7 @@ func (m *Metric) Save(c chan<- datastore.Property) error {
 }
 
 // Get() and Put() recursively gets/puts metrics into the datastore
-func (m *Metric) GetChildren(c appengine.Context, key *datastore.Key) ([]Metric, error) {
+func (m *Metric) GetChildren(c appengine.Context, key *datastore.Key) ([]*Metric, error) {
 	q := datastore.NewQuery(MetricKind).Ancestor(key)
 	hierarchy := map[string]*Metric{} // {keyString: *metric}
 	for t := q.Run(c); ; {
@@ -62,7 +62,7 @@ func (m *Metric) GetChildren(c appengine.Context, key *datastore.Key) ([]Metric,
 		childKey, _ := datastore.DecodeKey(keyString)
 		parentKey := childKey.Parent()
 		if parent, ok := hierarchy[parentKey.Encode()]; ok {
-			parent.Children = append(parent.Children, *child)
+			parent.Children = append(parent.Children, child)
 		}
 	}
 	return hierarchy[key.Encode()].Children, nil
@@ -115,10 +115,23 @@ func getMetrics(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	namespace := vars["namespace"]
+	board := Board{}
+	if err := datastore.Get(c, boardKey, &board); err != nil {
+		http.Error(w, err.Error(), http.StatusNotFound)
+		return
+	}
+
+	// Request params
+	var (
+		namespace string
+		start     time.Time
+		end       time.Time
+		depth     int64
+	)
+
+	namespace = vars["namespace"]
 
 	// Evalutates oldest point in request timeline
-	var start time.Time
 	if startParam := r.FormValue("start"); startParam != "" {
 		if start, err = time.Parse(time.RFC3339, startParam); err != nil {
 			http.Error(w, "Invalid start param: "+startParam, http.StatusBadRequest)
@@ -127,7 +140,6 @@ func getMetrics(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Evalutates newest point in request timeline
-	var end time.Time
 	if endParam := r.FormValue("end"); endParam != "" {
 		if end, err = time.Parse(time.RFC3339, endParam); err != nil {
 			http.Error(w, "Invalid end param: "+endParam, http.StatusBadRequest)
@@ -135,20 +147,23 @@ func getMetrics(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	depth := int64(0)
 	if depthParam := r.FormValue("depth"); depthParam != "" {
 		if depth, err = strconv.ParseInt(depthParam, 10, 0); err != nil {
 			http.Error(w, "Invalid depth param: "+depthParam, http.StatusBadRequest)
 			return
 		}
 	}
+
+	namespaces, err := board.Namespaces(c, boardKey)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	subspaces := getSubspaces(namespaces, namespace, depth)
 	Json{
-		"namespace": namespace,
-		"start":     start,
-		"end":       end,
-		"depth":     depth,
-		"c":         c,
-		"boardKey":  boardKey,
+		"subspaces": subspaces,
+		"start": start,
+		"end": end,
 	}.Write(w)
 }
 

@@ -31,7 +31,6 @@ func (b *Board) Namespaces(c appengine.Context, key *datastore.Key) ([]*Namespac
 		Project("namespace").
 		Distinct()
 	hierarchy := map[string]*Namespace{} // {metricKeyString: *namespace}
-	namespaces := []*Namespace{}
 	for t := q.Run(c); ; {
 		metric := Metric{}
 		metricKey, err := t.Next(&metric)
@@ -44,11 +43,12 @@ func (b *Board) Namespaces(c appengine.Context, key *datastore.Key) ([]*Namespac
 			Name: metricKey.StringID(),
 		}
 	}
+	namespaces := []*Namespace{}
 	for metricKeyString, namespace := range hierarchy {
 		key, _ := datastore.DecodeKey(metricKeyString)
 		if parentKey := key.Parent(); parentKey.Kind() == MetricKind {
 			parent, _ := hierarchy[parentKey.Encode()]
-			parent.Children = append(parent.Children, *namespace)
+			parent.Children = append(parent.Children, namespace)
 		} else {
 			namespaces = append(namespaces, namespace)
 		}

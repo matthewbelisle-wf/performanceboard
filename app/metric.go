@@ -177,7 +177,17 @@ func getMetrics(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	q.Ancestor(boardKey) // Must be last?
+	if param := r.FormValue("cursor"); param != "" {
+		if cursor, err := datastore.DecodeCursor(param); err != nil {
+			http.Error(w, "Invalid cursor param: "+param, http.StatusBadRequest)
+			return
+		} else {
+			q.Start(cursor)
+		}
+	}
+
+	q.Ancestor(boardKey). // Must be last?
+		Order("-start")
 
 	// Assembles metrics
 	metrics := Metrics{}
@@ -203,7 +213,9 @@ func getMetrics(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	Json{"metrics": metrics}.Write(w)
+	response := Json{"metrics": metrics}
+
+	response.Write(w)
 }
 
 // TODO memcache the board entity and validate boardKey against it

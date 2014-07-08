@@ -3,6 +3,7 @@ package performanceboard
 import (
 	"appengine"
 	"appengine/datastore"
+	"encoding/json"
 	"github.com/gorilla/mux"
 	"github.com/matthewbelisle-wf/jsonproperty"
 	"io/ioutil"
@@ -100,6 +101,19 @@ func (m *Metric) Put() error {
 		}
 	}
 	return nil
+}
+
+func (m Metric) MarshalJSON() ([]byte, error) {
+	type metric Metric
+	bytes, err := json.Marshal(metric(m))
+	if err != nil {
+		return nil, err
+	}
+	j := Json{}
+	_ = json.Unmarshal(bytes, &j)
+	api, _ := router.Get("metric").URL("metric", m.Key.Encode())
+	j["api"] = AbsURL(api, m.Context.Request().(*http.Request))
+	return json.Marshal(j)
 }
 
 // HTTP handlers

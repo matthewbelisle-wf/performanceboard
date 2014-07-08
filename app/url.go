@@ -5,7 +5,7 @@ import (
 	"net/url"
 )
 
-func AbsURL(u url.URL, request *http.Request) string {
+func AbsURL(u *url.URL, request *http.Request) string {
 	if !u.IsAbs() {
 		if request.TLS == nil {
 			u.Scheme = "http"

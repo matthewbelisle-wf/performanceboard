@@ -47,9 +47,9 @@ func (m *Metric) Save(c chan<- datastore.Property) error {
 	return datastore.SaveStruct(m, c)
 }
 
-// Get() and Put() recursively gets/puts metrics into the datastore
+// Recursively loads children from the datastore up to a certain depth.  Must be fast!
 func (m *Metric) LoadChildren(depth int64) <-chan error {
-	errChan := make(chan error, 1) // TODO: Remove 1?
+	errChan := make(chan error)
 	go func() {
 		q := datastore.NewQuery(MetricKind).Ancestor(m.Key)
 		if depth >= 0 {
@@ -83,6 +83,7 @@ func (m *Metric) LoadChildren(depth int64) <-chan error {
 	return errChan
 }
 
+// Recursively puts children into the datastore.  Does not need to be fast.
 func (m *Metric) Put() error {
 	if _, err := datastore.Put(m.Context, m.Key, m); err != nil {
 		m.Context.Errorf("Failed metric.Put()\nCould not do datastore.Put(): %s, %s", m.Key.Encode(), err)

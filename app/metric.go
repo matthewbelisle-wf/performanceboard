@@ -75,7 +75,7 @@ func (m *Metric) GetChildren(c appengine.Context, key *datastore.Key, depth int6
 		}
 	}
 
-	c1 <- hierarchy[key.Encode()].Children
+	c1 <- hierarchy[key.Encode()].Children // Top level metric
 	c2 <- nil
 	return c1, c2
 }
@@ -194,6 +194,7 @@ func getMetrics(w http.ResponseWriter, r *http.Request) {
 	}
 
 	Json{
+		"board": boardKey,
 		"metrics": metrics,
 	}.Write(w)
 }

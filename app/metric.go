@@ -18,14 +18,14 @@ import (
 const MetricKind = "Metric"
 
 type Metric struct {
-	Key       *datastore.Key            `datastore:"-" json:"key"`
-	Context   appengine.Context         `datastore:"-" json:"-"`
-	Namespace string                    `datastore:"namespace" json:"namespace"`
-	Meta      jsonproperty.JsonProperty `datastore:"-" json:"meta" jsonproperty:"meta"`
-	Start     time.Time                 `datastore:"start" json:"start"`
-	End       time.Time                 `datastore:"end" json:"end"`
-	Depth     int64                     `datastore:"depth" json:"-"`
-	Children  Metrics                   `datastore:"-" json:"children"`
+	Key       *datastore.Key            `datastore:"-"`
+	Context   appengine.Context         `datastore:"-"`
+	Namespace string                    `datastore:"namespace"`
+	Meta      jsonproperty.JsonProperty `datastore:"-" jsonproperty:"meta"`
+	Start     time.Time                 `datastore:"start"`
+	End       time.Time                 `datastore:"end"`
+	Depth     int64                     `datastore:"depth"`
+	Children  Metrics                   `datastore:"-"`
 }
 
 type Metrics []*Metric
@@ -104,16 +104,15 @@ func (m *Metric) Put() error {
 }
 
 func (m Metric) MarshalJSON() ([]byte, error) {
-	type metric Metric
-	bytes, err := json.Marshal(metric(m))
-	if err != nil {
-		return nil, err
-	}
-	j := Json{}
-	_ = json.Unmarshal(bytes, &j)
 	api, _ := router.Get("metric").URL("metric", m.Key.Encode())
-	j["api"] = AbsURL(api, m.Context.Request().(*http.Request))
-	return json.Marshal(j)
+	return json.Marshal(Json{
+		"key":      m.Key,
+		"start":    m.Start,
+		"end":      m.End,
+		"meta":     m.Meta,
+		"children": m.Children,
+		"api":      AbsURL(api, m.Context.Request().(*http.Request)),
+	})
 }
 
 // HTTP handlers

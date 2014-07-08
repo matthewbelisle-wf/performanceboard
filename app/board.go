@@ -43,7 +43,8 @@ func (b *Board) Namespaces() (Namespaces, error) {
 			return nil, err
 		}
 		hierarchy[metric.Key.Encode()] = &Namespace{
-			Name: metric.Namespace,
+			Board: b,
+			Name:  metric.Namespace,
 		}
 	}
 	namespaces := Namespaces{}

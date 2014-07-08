@@ -68,12 +68,12 @@ func getBoard(w http.ResponseWriter, r *http.Request) {
 	c := appengine.NewContext(r)
 	board := Board{}
 	if err = datastore.Get(c, key, &board); err != nil {
-		http.Error(w, err.Error(), http.StatusNotFound)
+		http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
 		return
 	}
 	json, err := board.Json(c, key)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		return
 	}
 	json.Write(w)
@@ -87,12 +87,12 @@ func createBoard(w http.ResponseWriter, r *http.Request) {
 	}
 	key, err := datastore.Put(c, datastore.NewIncompleteKey(c, BoardKind, nil), &board)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		return
 	}
 	json, err := board.Json(c, key)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		return
 	}
 	json.Write(w)

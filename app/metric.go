@@ -49,34 +49,36 @@ func (m *Metric) Save(c chan<- datastore.Property) error {
 func (m *Metric) GetChildren(c appengine.Context, key *datastore.Key, depth int64) (<-chan Metrics, <-chan error) {
 	c1 := make(chan Metrics, 1)
 	c2 := make(chan error, 1)
-	q := datastore.NewQuery(MetricKind).Ancestor(key)
-	if depth >= 0 {
-		q.Filter("depth <=", m.Depth + depth)
-	}
-
-	hierarchy := map[string]*Metric{} // {keyString: *metric}
-	for t := q.Run(c);; {
-		child := Metric{}
-		childKey, err := t.Next(&child)
-		if err == datastore.Done {
-			break
-		} else if err != nil {
-			c1 <- nil
-			c2 <- err
-			return c1, c2
+	go func() {
+		q := datastore.NewQuery(MetricKind).Ancestor(key)
+		if depth >= 0 {
+			q.Filter("depth <=", m.Depth+depth)
 		}
-		hierarchy[childKey.Encode()] = &child
-	}
-	for keyString, child := range hierarchy {
-		childKey, _ := datastore.DecodeKey(keyString)
-		parentKey := childKey.Parent()
-		if parent, ok := hierarchy[parentKey.Encode()]; ok {
-			parent.Children = append(parent.Children, child)
-		}
-	}
 
-	c1 <- hierarchy[key.Encode()].Children // Top level metric
-	c2 <- nil
+		hierarchy := map[string]*Metric{} // {keyString: *metric}
+		for t := q.Run(c); ; {
+			child := Metric{}
+			childKey, err := t.Next(&child)
+			if err == datastore.Done {
+				break
+			} else if err != nil {
+				c1 <- nil
+				c2 <- err
+				return
+			}
+			hierarchy[childKey.Encode()] = &child
+		}
+		for keyString, child := range hierarchy {
+			childKey, _ := datastore.DecodeKey(keyString)
+			parentKey := childKey.Parent()
+			if parent, ok := hierarchy[parentKey.Encode()]; ok {
+				parent.Children = append(parent.Children, child)
+			}
+		}
+
+		c1 <- hierarchy[key.Encode()].Children // Top level metric
+		c2 <- nil
+	}()
 	return c1, c2
 }
 
@@ -194,7 +196,7 @@ func getMetrics(w http.ResponseWriter, r *http.Request) {
 	}
 
 	Json{
-		"board": boardKey,
+		"board":   boardKey,
 		"metrics": metrics,
 	}.Write(w)
 }

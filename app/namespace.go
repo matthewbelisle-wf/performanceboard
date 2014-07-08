@@ -1,17 +1,26 @@
 package performanceboard
 
 type Namespace struct {
-	Name     string      `json:"name"`
-	Children []*Namespace `json:"children"`
+	Name     string     `json:"name"`
+	Children Namespaces `json:"children"`
 }
 
-func getSubspaces(namespaces []*Namespace, top string, depth int64) []string {
-	subspaces := []string{}
-	for _, namespace := range namespaces {
-		subspace := top + "." + namespace.Name
-		subspaces = append(subspaces, subspace)
-		more := getSubspaces(namespace.Children, subspace, depth - 1)
-		subspaces = append(subspaces, more...)
+type Namespaces []*Namespace
+
+// Recursively searches namespaces for the children of a given namespace
+func (n Namespaces) Childspaces(namespace string) Namespaces {
+	var search func(needle string, haystack Namespaces) Namespaces
+	search = func(needle string, haystack Namespaces) Namespaces {
+		if needle == namespace {
+			return haystack
+		}
+		for _, child := range haystack {
+			needle2 := needle + "." + child.Name
+			if found := search(needle2, child.Children); found != nil {
+				return found
+			}
+		}
+		return nil
 	}
-	return subspaces
+	return search(namespace, n)
 }

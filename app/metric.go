@@ -7,7 +7,6 @@ import (
 	"github.com/matthewbelisle-wf/jsonproperty"
 	"io/ioutil"
 	"net/http"
-	"strconv"
 	"time"
 )
 
@@ -126,7 +125,6 @@ func getMetrics(w http.ResponseWriter, r *http.Request) {
 		namespace string
 		start     time.Time
 		end       time.Time
-		depth     int64
 	)
 
 	namespace = vars["namespace"]
@@ -147,21 +145,16 @@ func getMetrics(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	if depthParam := r.FormValue("depth"); depthParam != "" {
-		if depth, err = strconv.ParseInt(depthParam, 10, 0); err != nil {
-			http.Error(w, "Invalid depth param: "+depthParam, http.StatusBadRequest)
-			return
-		}
-	}
-
 	namespaces, err := board.Namespaces(c, boardKey)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	subspaces := getSubspaces(namespaces, namespace, depth)
+
+	childspaces := namespaces.Childspaces(namespace)
+
 	Json{
-		"subspaces": subspaces,
+		"childspaces": childspaces,
 		"start": start,
 		"end": end,
 	}.Write(w)

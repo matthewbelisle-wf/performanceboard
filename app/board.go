@@ -25,7 +25,7 @@ func (b *Board) Json(c appengine.Context, key *datastore.Key) (*Json, error) {
 	}, nil
 }
 
-func (b *Board) Namespaces(c appengine.Context, key *datastore.Key) ([]*Namespace, error) {
+func (b *Board) Namespaces(c appengine.Context, key *datastore.Key) (Namespaces, error) {
 	q := datastore.NewQuery(MetricKind).
 		Ancestor(key).
 		Project("namespace").
@@ -43,7 +43,7 @@ func (b *Board) Namespaces(c appengine.Context, key *datastore.Key) ([]*Namespac
 			Name: metricKey.StringID(),
 		}
 	}
-	namespaces := []*Namespace{}
+	namespaces := Namespaces{}
 	for metricKeyString, namespace := range hierarchy {
 		key, _ := datastore.DecodeKey(metricKeyString)
 		if parentKey := key.Parent(); parentKey.Kind() == MetricKind {

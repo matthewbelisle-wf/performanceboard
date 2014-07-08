@@ -47,12 +47,13 @@ func (m *Metric) Save(c chan<- datastore.Property) error {
 
 // Get() and Put() recursively gets/puts metrics into the datastore
 func (m *Metric) GetChildren(c appengine.Context, key *datastore.Key, depth int64) (<-chan Metrics, <-chan error) {
-	c1 := make(chan Metrics)
-	c2 := make(chan error)
+	c1 := make(chan Metrics, 1)
+	c2 := make(chan error, 1)
 	q := datastore.NewQuery(MetricKind).Ancestor(key)
 	if depth >= 0 {
 		q.Filter("depth <=", m.Depth + depth)
 	}
+
 	hierarchy := map[string]*Metric{} // {keyString: *metric}
 	for t := q.Run(c);; {
 		child := Metric{}
@@ -66,7 +67,6 @@ func (m *Metric) GetChildren(c appengine.Context, key *datastore.Key, depth int6
 		}
 		hierarchy[childKey.Encode()] = &child
 	}
-
 	for keyString, child := range hierarchy {
 		childKey, _ := datastore.DecodeKey(keyString)
 		parentKey := childKey.Parent()
@@ -74,6 +74,7 @@ func (m *Metric) GetChildren(c appengine.Context, key *datastore.Key, depth int6
 			parent.Children = append(parent.Children, child)
 		}
 	}
+
 	c1 <- hierarchy[key.Encode()].Children
 	c2 <- nil
 	return c1, c2
@@ -136,35 +137,64 @@ func getMetrics(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Request params
-	var (
-		namespace string
-		start     time.Time
-		end       time.Time
-	)
+	// Assembles query
+	q := datastore.NewQuery(MetricKind).
+		Filter("namespace =", vars["namespace"])
 
-	namespace = vars["namespace"]
+	c.Infof("Filtering on namespaces: %v", string(vars["namespace"]))
 
-	// Evalutates oldest point in request timeline
-	if startParam := r.FormValue("start"); startParam != "" {
-		if start, err = time.Parse(time.RFC3339, startParam); err != nil {
-			http.Error(w, "Invalid start param: "+startParam, http.StatusBadRequest)
+	// Oldest point in request timeline
+	if param := r.FormValue("start"); param != "" {
+		if start, err := time.Parse(time.RFC3339, param); err != nil {
+			http.Error(w, "Invalid start param: "+param, http.StatusBadRequest)
 			return
+		} else {
+			q.Filter("start >=", start)
 		}
 	}
 
-	// Evalutates newest point in request timeline
-	if endParam := r.FormValue("end"); endParam != "" {
-		if end, err = time.Parse(time.RFC3339, endParam); err != nil {
-			http.Error(w, "Invalid end param: "+endParam, http.StatusBadRequest)
+	// Newest point in request timeline
+	if param := r.FormValue("end"); param != "" {
+		if end, err := time.Parse(time.RFC3339, param); err != nil {
+			http.Error(w, "Invalid end param: "+param, http.StatusBadRequest)
+			return
+		} else {
+			q.Filter("end <=", end)
+		}
+	}
+
+	q.Ancestor(boardKey) // Must be last?
+
+	// Assembles metrics
+	metrics := Metrics{}
+	childrenChans := []<-chan Metrics{}
+	errChans := []<-chan error{}
+	t := q.Run(c)
+	for {
+		metric := Metric{}
+		key, err := t.Next(&metric)
+		if err == datastore.Done {
+			break
+		} else if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
+		metrics = append(metrics, &metric)
+		cChan, eChan := metric.GetChildren(c, key, 1)
+		childrenChans = append(childrenChans, cChan)
+		errChans = append(errChans, eChan)
+	}
+
+	for i, metric := range metrics {
+		if err := <-errChans[i]; err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		metric.Children = <-childrenChans[i]
 	}
 
 	Json{
-		"namespace": namespace,
-		"start": start,
-		"end": end,
+		"metrics": metrics,
 	}.Write(w)
 }
 

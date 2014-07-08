@@ -157,8 +157,6 @@ func getMetrics(w http.ResponseWriter, r *http.Request) {
 	q := datastore.NewQuery(MetricKind).
 		Filter("namespace =", vars["namespace"])
 
-	c.Infof("Filtering on namespaces: %v", string(vars["namespace"]))
-
 	// Oldest point in request timeline
 	if param := r.FormValue("start"); param != "" {
 		if start, err := time.Parse(time.RFC3339, param); err != nil {
@@ -205,10 +203,7 @@ func getMetrics(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	Json{
-		"board":   boardKey,
-		"metrics": metrics,
-	}.Write(w)
+	Json{"metrics": metrics}.Write(w)
 }
 
 // TODO memcache the board entity and validate boardKey against it

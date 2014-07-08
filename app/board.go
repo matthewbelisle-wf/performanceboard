@@ -24,8 +24,8 @@ func (b Board) MarshalJSON() ([]byte, error) {
 		return nil, err
 	}
 	return json.Marshal(Json{
-		"key":      b.Key,
-		"api":      AbsURL(api, b.Context.Request().(*http.Request)),
+		"key":        b.Key,
+		"api":        AbsURL(api, b.Context.Request().(*http.Request)),
 		"namespaces": namespaces,
 	})
 }

@@ -4,6 +4,7 @@ import (
 	"appengine"
 	"appengine/datastore"
 	"appengine/user"
+	"encoding/json"
 	"github.com/gorilla/mux"
 	"net/http"
 )
@@ -11,20 +12,22 @@ import (
 const BoardKind = "Board"
 
 type Board struct {
-	Key     *datastore.Key    `datastore:"-" json:"key"`
-	Context appengine.Context `datastore:"-" json:"-"`
-	UserID  string            `datastore:"user_id" json:"-"`
+	Key     *datastore.Key    `datastore:"-"`
+	Context appengine.Context `datastore:"-"`
+	UserID  string            `datastore:"user_id"`
 }
 
-func (b *Board) Json() (*Json, error) {
+func (b Board) MarshalJSON() ([]byte, error) {
+	api, _ := router.Get("board").URL("board", b.Key.Encode())
 	namespaces, err := b.Namespaces()
 	if err != nil {
 		return nil, err
 	}
-	return &Json{
-		"board":      b.Key.Encode(),
+	return json.Marshal(Json{
+		"key":      b.Key,
+		"api":      AbsURL(api, b.Context.Request().(*http.Request)),
 		"namespaces": namespaces,
-	}, nil
+	})
 }
 
 func (b *Board) Namespaces() (Namespaces, error) {
@@ -75,12 +78,11 @@ func getBoard(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
 		return
 	}
-	json, err := board.Json()
-	if err != nil {
+
+	if err := WriteJson(board, w); err != nil {
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		return
 	}
-	json.Write(w)
 }
 
 func createBoard(w http.ResponseWriter, r *http.Request) {
@@ -95,10 +97,8 @@ func createBoard(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		return
 	}
-	json, err := board.Json()
-	if err != nil {
+	if err = WriteJson(board, w); err != nil {
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		return
 	}
-	json.Write(w)
 }

@@ -14,6 +14,7 @@ const AggregateMetricKind = "AggregateMetric"
 type AggregateMetric struct {
 	Key       *datastore.Key    `datastore:"-"`
 	Context   appengine.Context `datastore:"-"`
+	BoardKey  string            `datastore:"board_key"`
 	Namespace string            `datastore:"namespace"`
 	Start     time.Time         `datastore:"start"`
 	BinType   string            `datastore:"bin_type"` // second, minute, hour, day

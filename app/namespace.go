@@ -8,8 +8,9 @@ import (
 )
 
 type Namespace struct {
-	Name string `json:"name"`
-	Api  string `json:"api"`
+	Name     string       `json:"name"`
+	Api      string       `json:"api"`
+	Children []*Namespace `datastore:"-" json:"children"`
 }
 
 func readNamespaceChildren(context appengine.Context, boardKeyString string, rootNamespace string) []string {
@@ -32,23 +33,31 @@ func getNamespaces(writer http.ResponseWriter, request *http.Request) {
 	context := appengine.NewContext(request)
 	boardKeyString := mux.Vars(request)["board"]
 	q := datastore.NewQuery(TaxonomyKind).
-		Filter("BoardKey =", boardKeyString).
-		Filter("Namespace =", "")
+		Filter("BoardKey =", boardKeyString)
 
 	taxonomies := []Taxonomy{}
 	if _, err := q.GetAll(context, &taxonomies); err != nil {
 		context.Errorf("Error fetching Taxonomies:%v", err)
 	}
 
-	namespaces := []Namespace{}
+	hierarchy := map[string]*Namespace{}
+	parents := map[string]string{}
+	namespaces := []*Namespace{} // Top level namespaces
 	route := router.Get("namespace")
 	for _, taxonomy := range taxonomies {
 		url, _ := route.URL("board", boardKeyString, "namespace", taxonomy.Childspace)
-		namespace := Namespace{
+		hierarchy[taxonomy.Childspace] = &Namespace{
 			Name: taxonomy.Childspace,
 			Api:  AbsURL(*url, request),
 		}
-		namespaces = append(namespaces, namespace)
+		parents[taxonomy.Childspace] = taxonomy.Namespace
+	}
+	for _, namespace := range hierarchy {
+		if parent, ok := hierarchy[parents[namespace.Name]]; ok {
+			parent.Children = append(parent.Children, namespace)
+		} else {
+			namespaces = append(namespaces, namespace)
+		}
 	}
 
 	JsonResponse{

@@ -5,24 +5,7 @@ import (
 	"appengine/datastore"
 	"appengine/delay"
 	"encoding/json"
-	// "fmt"
-	"time"
 )
-
-const AggregateMetricKind = "AggregateMetric"
-
-type AggregateMetric struct {
-	Key       *datastore.Key `datastore:"-"`
-	BoardKey  string
-	Namespace string
-	StartTime time.Time
-	BinType   string // second, minute, hour, day
-	Min       float64
-	Max       float64
-	Mean      float64
-	Sum       int64
-	Count     int64
-}
 
 // aggregateSecond(context, metric.Start, boardKeyString, metric.Namespace)
 

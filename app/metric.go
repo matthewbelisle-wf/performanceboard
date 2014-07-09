@@ -187,7 +187,7 @@ func getMetrics(w http.ResponseWriter, r *http.Request) {
 	}
 
 	q.Ancestor(boardKey). // Must be last?
-		Order("-start")
+				Order("-start")
 
 	// Assembles metrics
 	metrics := Metrics{}

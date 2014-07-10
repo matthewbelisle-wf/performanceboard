@@ -27,43 +27,32 @@ $('#create-board').click(function() {
 ////////////
 
 var initGraphs = function() {
-    var graphs = {}; // {'namespace.name': graph}
-
     var initGraph = function(namespace) {
-        var titleElement = $('<h1>').text(namespace.name);
+        var titleElement = $('<h1 class="graph-title">').text(namespace.name);
         $('#graphs-block').append(titleElement);
         var graphElement = $('<div class="graph">');
         $('#graphs-block').append(graphElement);
-        graph = graphElement.epoch({
-            type: 'time.bar',
-            axes: ['bottom', 'left'],
-            queueSize: 1,
-            data: [{
-                label: namespace.name,
-                values: [{
-                    time: Date.now() / 1000,
-                    y: 0
-                }]
-            }]
+        new Rickshaw.Graph.Ajax({
+            dataURL: namespace.api,
+            element: graphElement.get(0),
+            width: 600,
+            height: 400,
+            renderer: 'bar',
+            onData: onData
         });
-        graphs[namespace.name] = graph;
-        graph.updated = new Date();
-        updateGraph(namespace);
-        setInterval(function() { updateGraph(namespace); }, 2000);
     };
 
-    var updateGraph = function(namespace) {
-        var graph = graphs[namespace.name];
-        $.get(namespace.api, {start: graph.updated.toISOString()}).
-            done(function(data) {
-                for (i = 0; i < data.length; i++) {
-                    var start = Date.parse(data[i].start) / 1000;
-                    var end = Date.parse(data[i].end) / 1000;
-                    var y = end - start; // NOTE: accurate to a millisecond, no more!
-                    graph.push([{time: start, y: y * 1000}]);
-                }
-                graph.updated = new Date();
-            });
+    var onData = function(data) {
+        var series = [{data: [], color: 'lightblue'}];
+        var metrics = data.result;
+        for (i = 0; i < metrics.length; i++) {
+            var start = Date.parse(metrics[i].start) / 1000;
+            var end = Date.parse(metrics[i].end) / 1000;
+            var y = end - start; // NOTE: accurate to a millisecond, no more!
+            series[0].data.unshift({x: metrics.length - i - 1, y: y});
+        }
+        console.log(JSON.stringify(series));
+        return series;
     };
 
     $.get('/api/' + getBoardKey())

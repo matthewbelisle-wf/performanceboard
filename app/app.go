@@ -25,6 +25,7 @@ func init() {
 	router.HandleFunc("/api/{board}/{namespace}", methodNotAllowed)
 	router.HandleFunc("/api/{board}", getNamespaces).Methods("GET").Name("board")
 	router.HandleFunc("/api/{board}", postMetric).Methods("POST")
+	router.HandleFunc("/api/{board}", clearBoard).Methods("PUT")
 	router.HandleFunc("/api/{board}", methodNotAllowed)
 	router.HandleFunc("/api/", createBoard).Methods("POST")
 	router.HandleFunc("/api/", methodNotAllowed)

@@ -4,6 +4,7 @@ import (
 	"appengine"
 	"appengine/datastore"
 	"appengine/user"
+	"github.com/gorilla/mux"
 	"net/http"
 )
 
@@ -32,4 +33,34 @@ func createBoard(writer http.ResponseWriter, request *http.Request) {
 	}
 	board.Key, _ = datastore.Put(context, datastore.NewIncompleteKey(context, BoardKind, nil), &board)
 	board.ServeHTTP(writer, request)
+}
+
+func clearBoard(w http.ResponseWriter, r *http.Request) {
+	keyString := mux.Vars(r)["board"]
+	key, err := datastore.DecodeKey(keyString)
+	if err != nil || key.Kind() != BoardKind {
+		http.Error(w, "Invalid board key: "+keyString, http.StatusBadRequest)
+		return
+	}
+	c := appengine.NewContext(r)
+	board := Board{Key: key}
+	if err = datastore.Get(c, key, &board); err != nil {
+		http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
+		return
+	}
+
+	q := datastore.NewQuery(MetricKind).Ancestor(key).KeysOnly().Limit(2000)
+	for {
+		if keys, err := q.GetAll(c, nil); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		} else if len(keys) == 0 {
+			break
+		} else if err = datastore.DeleteMulti(c, keys); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return			
+		}
+	}
+
+	board.ServeHTTP(w, r)
 }

@@ -51,15 +51,13 @@ func clearBoard(w http.ResponseWriter, r *http.Request) {
 
 	q := datastore.NewQuery(MetricKind).Ancestor(key).KeysOnly().Limit(2000)
 	for {
-		keys, err := q.GetAll(c, nil)
-		if err != nil {
+		if keys, err := q.GetAll(c, nil); err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
-		}
-		if len(keys) == 0 {
+		} else if len(keys) == 0 {
 			break
 		}
-		if err = datastore.DeleteMulti(c, keys); err != nil {
+		if err := datastore.DeleteMulti(c, keys); err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return			
 		}

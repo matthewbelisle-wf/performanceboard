@@ -36,25 +36,44 @@ func createBoard(writer http.ResponseWriter, request *http.Request) {
 }
 
 func clearBoard(w http.ResponseWriter, r *http.Request) {
-	c := appengine.NewContext(r)
 	keyString := mux.Vars(r)["board"]
 	key, err := datastore.DecodeKey(keyString)
 	if err != nil || key.Kind() != BoardKind {
 		http.Error(w, "Invalid board key: "+keyString, http.StatusBadRequest)
 		return
 	}
+	c := appengine.NewContext(r)
 	board := Board{Key: key}
 	if err = datastore.Get(c, key, &board); err != nil {
 		http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
 		return
 	}
 	keys := []*datastore.Key{}
-	keys, err = datastore.NewQuery(MetricKind).Ancestor(key).KeysOnly().GetAll(c, nil)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	if err = datastore.DeleteMulti(c, keys); err != nil {
+	t := datastore.NewQuery(MetricKind).Ancestor(key).KeysOnly().Run(c)
+	keyChan := make(chan *datastore.Key, 50)
+	go func() {
+		for {
+			key, err := t.Next(nil)
+			if err == datastore.Done {
+				keyChan <- key
+				break
+			} else if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				break
+			}
+		}
+		close(keyChan)
+	}()
+	errChan := make(chan error, 50)
+	go func() {
+		for key := range keyChan {
+			go func(key *datastore.Key) {
+				errChan <- datastore.Delete(c, key)
+			}(key)
+		}
+		close(errChan)
+	}()
+	for err := range errChan {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}

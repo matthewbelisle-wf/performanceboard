@@ -48,34 +48,36 @@ func clearBoard(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
 		return
 	}
-	keys := []*datastore.Key{}
 	t := datastore.NewQuery(MetricKind).Ancestor(key).KeysOnly().Run(c)
-	keyChan := make(chan *datastore.Key, 50)
+
+	// Deletes metrics concurrently with 20 goroutines
+	keyChan := make(chan *datastore.Key)
+	errChan := make(chan error, 20)
 	go func() {
 		for {
 			key, err := t.Next(nil)
 			if err == datastore.Done {
-				keyChan <- key
 				break
 			} else if err != nil {
-				http.Error(w, err.Error(), http.StatusInternalServerError)
+				errChan <- err
 				break
 			}
+			keyChan <- key
 		}
 		close(keyChan)
 	}()
-	errChan := make(chan error, 50)
-	go func() {
-		for key := range keyChan {
-			go func(key *datastore.Key) {
-				errChan <- datastore.Delete(c, key)
-			}(key)
+	n := 0
+	for key := range keyChan {
+		go func(key *datastore.Key) {
+			errChan <- datastore.Delete(c, key)
+		}(key)
+		n++
+	}
+	for i := 0; i < n; i++ {
+		if err := <- errChan; err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
 		}
-		close(errChan)
-	}()
-	for err := range errChan {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
 	}
 	board.ServeHTTP(w, r)
 }

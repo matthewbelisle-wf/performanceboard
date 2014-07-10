@@ -53,6 +53,7 @@ func clearBoard(w http.ResponseWriter, r *http.Request) {
 	// Deletes metrics concurrently with 20 goroutines
 	keyChan := make(chan *datastore.Key)
 	errChan := make(chan error, 20)
+	numErrs := 1
 	go func() {
 		for {
 			key, err := t.Next(nil)
@@ -65,15 +66,15 @@ func clearBoard(w http.ResponseWriter, r *http.Request) {
 			keyChan <- key
 		}
 		close(keyChan)
+		errChan <- nil
 	}()
-	n := 0
 	for key := range keyChan {
 		go func(key *datastore.Key) {
 			errChan <- datastore.Delete(c, key)
 		}(key)
-		n++
+		numErrs++
 	}
-	for i := 0; i < n; i++ {
+	for i := 0; i < numErrs; i++ {
 		if err := <- errChan; err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return

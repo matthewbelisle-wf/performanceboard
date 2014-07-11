@@ -71,6 +71,15 @@ if (getBoardKey()) {
     $('#create-board-block').hide();
 } else {
     $('#create-board-block').show();
+    $.get('/api/').done(function(data) {
+        //TODO:: replace with a template
+        var html = '<ul>';
+        for (var i = 0; i < data.results.length; i++) {
+            html += '<li><a href=' + data.results[i].url + '>' + data.results[i].name + '</a></li>'
+        }
+        html += '</ul>'
+        $('#list-boards-block').html(html);
+    })
 }
 
 if (getBoardKey()) {

@@ -30,27 +30,27 @@ var initGraphs = function() {
     var initGraph = function(namespace, data) {
         var palette = new Rickshaw.Color.Palette();
         var seriesMap = {};
-        var metrics = data.result;
-        for (var i = 0; i < metrics.length; i++) {
-            var metric = metrics[i];
+        var metrics = data.results;
+        $.each(metrics, function(i, metric) {
             var start = Date.parse(metric.start) / 1000;
             var end = Date.parse(metric.end) / 1000;
             var x = metrics.length - i - 1;
             var y = end - start; // NOTE: accurate to a millisecond, no more!
-            for (var i2 = 0; metric.children && i2 < metric.children.length; i2++) {
-                var child = metric.children[i2];
-                var start2 = Date.parse(child.start) / 1000;
-                var end2 = Date.parse(child.end) / 1000;
-                var y2 = end2 - start2;
-                y -= y2;
-                if (!seriesMap[child.namespace]) {
-                    seriesMap[child.namespace] = {
-                        data: [],
-                        name: child.namespace,
-                        color: palette.color()
-                    };
-                }
-                seriesMap[child.namespace].data.unshift({x: x, y: y2});
+            if (metric.children) {
+                $.each(metric.children, function(i2, child) {
+                    var start2 = Date.parse(child.start) / 1000;
+                    var end2 = Date.parse(child.end) / 1000;
+                    var y2 = end2 - start2;
+                    y -= y2;
+                    if (!seriesMap[child.namespace]) {
+                        seriesMap[child.namespace] = {
+                            data: [],
+                            name: child.namespace,
+                            color: palette.color()
+                        };
+                    }
+                    seriesMap[child.namespace].data.unshift({x: x, y: y2});
+                });
             }
             if (!seriesMap[metric.namespace]) {
                 seriesMap[metric.namespace] = {
@@ -60,34 +60,39 @@ var initGraphs = function() {
                 };
             }
             seriesMap[metric.namespace].data.unshift({x: x, y: y});
-        }
-
-        var series = [];
-        for (var n in seriesMap) {
-            series.push(seriesMap[n]);
-        }
-        // graph.series = series;
-
-        var yAxis = new Rickshaw.Graph.Axis.Y({
-            graph: graph,
-            ticksTreatment: 'glow'
         });
 
-        yAxis.render();
+        var series = [];
+        $.each(seriesMap, function(k, v) {
+            series.push(v);
+        });
 
-        var titleElement = $('<h1 class="graph-title">').text(namespace.name);
-        $('#graphs-block').append(titleElement);
+        var graphWrap = $('<div class="graph-wrap">');
+        $('#graphs-block').append(graphWrap);        
+
+        var titleElement = $('<h1 class="graph-title">').text(namespace);
+        graphWrap.append(titleElement);
 
         var graphElement = $('<div class="graph">');
-        $('#graphs-block').append(graphElement);
-        var graph = new Rickshaw.Graph.Ajax({
-            dataURL: namespace.api + '?depth=1',
+        graphWrap.append(graphElement);
+        var graph = new Rickshaw.Graph({
             element: graphElement.get(0),
             width: 600,
             height: 400,
             renderer: 'bar',
-            onData: onData
+            series: series
         });
+
+        // var yAxisElement = $('<div class="axis y-axis">');
+        // graphWrap.append(yAxisElement);
+        // var yAxis = new Rickshaw.Graph.Axis.Y({
+        //     element: yAxisElement.get(0),
+        //     graph: graph,
+        //     tickFormat: Rickshaw.Fixtures.Number.formatKMBT,
+        //     ticksTreatment: 'glow'
+        // });
+
+        graph.render();
 
         // var previewElement = $('<div class="preview">');
         // graphElement.append(previewElement);
@@ -108,6 +113,19 @@ var initGraphs = function() {
         });
 };
 
+////////////
+// Boards //
+////////////
+
+$.get('/api/').done(function(data) {
+    // TODO:: replace with a template
+    var ul = $('<ul class="nav nav-stacked">');
+    $.each(data.results, function(k, v) {
+        ul.append('<li><a href="' + v.url + '">' + v.name + '</a></li>');
+    });
+    $('#list-boards-block').html(ul);
+});
+
 ///////////
 // Views //
 ///////////
@@ -116,15 +134,6 @@ if (getBoardKey()) {
     $('#create-board-block').hide();
 } else {
     $('#create-board-block').show();
-    $.get('/api/').done(function(data) {
-        //TODO:: replace with a template
-        var html = '<ul>';
-        for (var i = 0; i < data.results.length; i++) {
-            html += '<li><a href=' + data.results[i].url + '>' + data.results[i].name + '</a></li>'
-        }
-        html += '</ul>'
-        $('#list-boards-block').html(html);
-    })
 }
 
 if (getBoardKey()) {

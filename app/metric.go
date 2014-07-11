@@ -184,7 +184,7 @@ func getMetrics(writer http.ResponseWriter, request *http.Request) {
 
 	metricsDtoList := makeMetricDtoList(metrics)
 	response := JsonResponse{
-		"result": metricsDtoList,
+		"results": metricsDtoList,
 	}
 	if len(cursor) > 0 {
 		url := request.URL

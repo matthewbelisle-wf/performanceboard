@@ -83,14 +83,13 @@ var initGraphs = function() {
             series: series
         });
 
-        // var yAxisElement = $('<div class="axis y-axis">');
-        // graphWrap.append(yAxisElement);
-        // var yAxis = new Rickshaw.Graph.Axis.Y({
-        //     element: yAxisElement.get(0),
-        //     graph: graph,
-        //     tickFormat: Rickshaw.Fixtures.Number.formatKMBT,
-        //     ticksTreatment: 'glow'
-        // });
+        var yAxisElement = $('<div class="axis y_axis">');
+        graphWrap.append(yAxisElement);
+        var yAxis = new Rickshaw.Graph.Axis.Y({
+            element: yAxisElement.get(0),
+            graph: graph,
+            ticksTreatment: 'glow'
+        });
 
         graph.render();
 

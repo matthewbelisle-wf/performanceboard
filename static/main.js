@@ -32,8 +32,8 @@ var initGraphs = function() {
         $('#graphs-block').append(titleElement);
         var graphElement = $('<div class="graph">');
         $('#graphs-block').append(graphElement);
-        new Rickshaw.Graph.Ajax({
-            dataURL: namespace.api,
+        graph = new Rickshaw.Graph.Ajax({
+            dataURL: namespace.api + '?depth=1',
             element: graphElement.get(0),
             width: 600,
             height: 400,
@@ -43,15 +43,45 @@ var initGraphs = function() {
     };
 
     var onData = function(data) {
-        var series = [{data: [], color: 'lightblue'}];
+        var palette = new Rickshaw.Color.Palette({scheme: 'classic9'});
+        var seriesMap = {};
         var metrics = data.result;
-        for (i = 0; i < metrics.length; i++) {
-            var start = Date.parse(metrics[i].start) / 1000;
-            var end = Date.parse(metrics[i].end) / 1000;
+        for (var i = 0; i < metrics.length; i++) {
+            var metric = metrics[i];
+            var start = Date.parse(metric.start) / 1000;
+            var end = Date.parse(metric.end) / 1000;
+            var x = metrics.length - i - 1;
             var y = end - start; // NOTE: accurate to a millisecond, no more!
-            series[0].data.unshift({x: metrics.length - i - 1, y: y});
+            for (var i2 = 0; metric.children && i2 < metric.children.length; i2++) {
+                var child = metric.children[i2];
+                var start2 = Date.parse(child.start) / 1000;
+                var end2 = Date.parse(child.end) / 1000;
+                var y2 = end2 - start2;
+                y -= y2;
+                if (!seriesMap[child.namespace]) {
+                    seriesMap[child.namespace] = {
+                        data: [],
+                        name: child.namespace,
+                        color: palette.color()
+                    };
+                }
+                seriesMap[child.namespace].data.unshift({x: x, y: y2});
+            }
+            if (!seriesMap[metric.namespace]) {
+                seriesMap[metric.namespace] = {
+                    data: [],
+                    name: metric.namespace,
+                    color: palette.color()
+                };
+            }
+            seriesMap[metric.namespace].data.unshift({x: x, y: y});
         }
-        console.log(JSON.stringify(series));
+
+        var series = [];
+        for (var n in seriesMap) {
+            series.push(seriesMap[n]);
+        }
+        
         return series;
     };
 

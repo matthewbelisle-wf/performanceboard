@@ -17,6 +17,7 @@ func makeMetricDtoList(metrics []Metric) []JsonResponse {
 	metricDtoList := []JsonResponse{}
 	for _, metric := range metrics {
 		metricDTO := make(JsonResponse)
+		metricDTO["namespace"] = metric.Namespace
 		metricDTO["start"] = metric.Start
 		metricDTO["end"] = metric.End
 		if len(metric.Meta) > 0 {

@@ -67,11 +67,11 @@ var initGraphs = function() {
             series.push(v);
         });
 
-        var graphWrap = $('<div class="graph-wrap">');
-        $('#graphs-block').append(graphWrap);        
-
         var titleElement = $('<h1 class="graph-title">').text(namespace);
-        graphWrap.append(titleElement);
+        $('#graphs-block').append(titleElement);
+
+        var graphWrap = $('<div class="graph-wrap">');
+        $('#graphs-block').append(graphWrap);
 
         var graphElement = $('<div class="graph">');
         graphWrap.append(graphElement);
@@ -83,7 +83,7 @@ var initGraphs = function() {
             series: series
         });
 
-        var yAxisElement = $('<div class="axis y_axis">');
+        var yAxisElement = $('<div class="axis y-axis">');
         graphWrap.append(yAxisElement);
         var yAxis = new Rickshaw.Graph.Axis.Y({
             element: yAxisElement.get(0),

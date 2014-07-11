@@ -35,6 +35,27 @@ func createBoard(writer http.ResponseWriter, request *http.Request) {
 	board.ServeHTTP(writer, request)
 }
 
+func listBoards(writer http.ResponseWriter, request *http.Request) {
+	context := appengine.NewContext(request)
+	q := datastore.NewQuery(BoardKind).KeysOnly()
+	if keys, err := q.GetAll(context, nil); err != nil {
+		http.Error(writer, err.Error(), http.StatusInternalServerError)
+	} else {
+		keyList := []JsonResponse{}
+		for _, key := range keys {
+			api, _ := router.Get("client").URL("client", key.Encode())
+
+			keyList = append(keyList, JsonResponse{
+				"name": "TODO::board name attribute",
+				"url":  AbsURL(*api, request),
+			})
+		}
+		JsonResponse{
+			"result": keyList,
+		}.Write(writer)
+	}
+}
+
 func clearBoard(w http.ResponseWriter, r *http.Request) {
 	keyString := mux.Vars(r)["board"]
 	key, err := datastore.DecodeKey(keyString)
@@ -58,7 +79,7 @@ func clearBoard(w http.ResponseWriter, r *http.Request) {
 			break
 		} else if err = datastore.DeleteMulti(c, keys); err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return			
+			return
 		}
 	}
 

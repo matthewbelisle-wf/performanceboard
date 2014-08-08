@@ -27,9 +27,10 @@ func readAggregates(context appengine.Context,
 	boardKey *datastore.Key, namespace string, binType string,
 	newestTime time.Time, duration time.Duration,
 	limit int, cursor string) ([]AggregateMetric, string, error) {
-	// newestTime - same as 'end'
-	// duration - 0 if it should go forever, TODO::USE CURSOR!
-	// binTypes ["day", "hour", "minute", "second"]
+	// newestTime: same as 'end'
+	// duration: 0 if it should go forever
+	// binTypes: "day", "hour", "minute", or "second"
+
 	q := datastore.NewQuery(AggregateMetricKind).
 		Filter("Namespace =", namespace).
 		Filter("BinType =", binType).
@@ -50,10 +51,6 @@ func readAggregates(context appengine.Context,
 		}
 	}
 
-	// if _, err := q.GetAll(context, &aggregates); err != nil {
-	// 	context.Errorf("Error reading aggregates: %v", err)
-	// 	return nil, err
-	// }
 	var aggregates []AggregateMetric
 	iter := q.Run(context)
 	for limit < 0 || len(aggregates) < limit {

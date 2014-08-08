@@ -4,7 +4,7 @@
 
 .graph {
     position: relative;
-    left: 40px;
+    left: 80px;
 }
 
 .y-axis {
@@ -13,3 +13,4 @@
     bottom: 0;
     width: 40px;
 }
+

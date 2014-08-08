@@ -10,6 +10,10 @@ var getMetricKeys = function() {
     return window.location.pathname.split('/').slice(2);
 };
 
+String.prototype.replaceAll = function(find, replace) {
+    return this.replace(new RegExp(find, 'g'), replace);
+}
+
 /////////////
 // Buttons //
 /////////////
@@ -31,10 +35,13 @@ var initGraphs = function() {
         var palette = new Rickshaw.Color.Palette();
         var seriesMap = {};
         var metrics = data.results;
+        var xLabels = [];
         $.each(metrics, function(i, metric) {
+            xLabels.push(metric.start);
             var start = Date.parse(metric.start) / 1000;
             var end = Date.parse(metric.end) / 1000;
             var x = metrics.length - i - 1;
+            // var x = start;
             var y = end - start; // NOTE: accurate to a millisecond, no more!
             if (metric.children) {
                 $.each(metric.children, function(i2, child) {
@@ -66,9 +73,9 @@ var initGraphs = function() {
         $.each(seriesMap, function(k, v) {
             series.push(v);
         });
-
-        var titleElement = $('<h1 class="graph-title">').text(namespace);
-        $('#graphs-block').append(titleElement);
+        
+        $('#graphs-block')
+            .append($('<h2 class="graph">').text(namespace));
 
         var graphWrap = $('<div class="graph-wrap">');
         $('#graphs-block').append(graphWrap);
@@ -83,10 +90,21 @@ var initGraphs = function() {
             series: series
         });
 
-        var yAxisElement = $('<div class="axis y-axis">');
-        graphWrap.append(yAxisElement);
+        var xAxisElement = $('<div class="graph x-axis">');
+        graphWrap.append(xAxisElement);
+
+        var xAxis = new Rickshaw.Graph.Axis.X({
+            element: xAxisElement.get(0),
+            orientation: 'bottom',
+            pixelsPerTick: 200,
+            graph: graph,
+            ticksTreatment: 'glow',
+            tickFormat: function(pos) {return xLabels[pos];},
+            tickRotation: 90,
+            tickOffsetX: -10,
+        });
+
         var yAxis = new Rickshaw.Graph.Axis.Y({
-            element: yAxisElement.get(0),
             graph: graph,
             ticksTreatment: 'glow'
         });
@@ -120,7 +138,18 @@ $.get('/api/').done(function(data) {
     // TODO:: replace with a template
     var ul = $('<ul class="nav nav-stacked">');
     $.each(data.results, function(k, v) {
-        ul.append('<li><a href="' + v.url + '">' + v.name + '</a></li>');
+        // ul.append();
+        var linkTemplate = 
+            '<table style="text-indent:25px; width:80%">' +
+            '<tr>' +
+            '  <td><a href="' + v.url + '">' + v.name + '</a></td>' +
+            '  <td><a href="{url}/day">Day </a></td>' +
+            '  <td><a href="{url}/hour">Hour </a></td>' +
+            '  <td><a href="{url}/minute">Min </a></td>' +
+            '  <td><a href="{url}/second">Sec </a></td>' +
+            '</tr>' +
+            '</table>';
+        ul.append(linkTemplate.replaceAll("{url}", v.url));
     });
     $('#list-boards-block').html(ul);
 });

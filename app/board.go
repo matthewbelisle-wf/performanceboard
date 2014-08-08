@@ -46,7 +46,7 @@ func listBoards(writer http.ResponseWriter, request *http.Request) {
 			api, _ := router.Get("client").URL("client", key.Encode())
 
 			keyList = append(keyList, JsonResponse{
-				"name": "BOARD NAME",
+				"name": "BOARD",
 				"url":  AbsURL(*api, request),
 			})
 		}

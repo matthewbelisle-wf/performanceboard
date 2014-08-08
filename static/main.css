@@ -3,7 +3,14 @@
 }
 
 .graph {
-    width: 600px;
-    height: 400px;
-    margin: 0px auto 96px auto;
+    position: relative;
+    left: 80px;
 }
+
+.y-axis {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 40px;
+}
+

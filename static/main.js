@@ -10,6 +10,10 @@ var getMetricKeys = function() {
     return window.location.pathname.split('/').slice(2);
 };
 
+String.prototype.replaceAll = function(find, replace) {
+    return this.replace(new RegExp(find, 'g'), replace);
+}
+
 /////////////
 // Buttons //
 /////////////
@@ -27,41 +31,128 @@ $('#create-board').click(function() {
 ////////////
 
 var initGraphs = function() {
-    var initGraph = function(namespace) {
-        var titleElement = $('<h1 class="graph-title">').text(namespace.name);
-        $('#graphs-block').append(titleElement);
+    var initGraph = function(namespace, data) {
+        var palette = new Rickshaw.Color.Palette();
+        var seriesMap = {};
+        var metrics = data.results;
+        var xLabels = [];
+        $.each(metrics, function(i, metric) {
+            xLabels.push(metric.start);
+            var start = Date.parse(metric.start) / 1000;
+            var end = Date.parse(metric.end) / 1000;
+            var x = metrics.length - i - 1;
+            // var x = start;
+            var y = end - start; // NOTE: accurate to a millisecond, no more!
+            if (metric.children) {
+                $.each(metric.children, function(i2, child) {
+                    var start2 = Date.parse(child.start) / 1000;
+                    var end2 = Date.parse(child.end) / 1000;
+                    var y2 = end2 - start2;
+                    y -= y2;
+                    if (!seriesMap[child.namespace]) {
+                        seriesMap[child.namespace] = {
+                            data: [],
+                            name: child.namespace,
+                            color: palette.color()
+                        };
+                    }
+                    seriesMap[child.namespace].data.unshift({x: x, y: y2});
+                });
+            }
+            if (!seriesMap[metric.namespace]) {
+                seriesMap[metric.namespace] = {
+                    data: [],
+                    name: metric.namespace,
+                    color: palette.color()
+                };
+            }
+            seriesMap[metric.namespace].data.unshift({x: x, y: y});
+        });
+
+        var series = [];
+        $.each(seriesMap, function(k, v) {
+            series.push(v);
+        });
+        
+        $('#graphs-block')
+            .append($('<h2 class="graph">').text(namespace));
+
+        var graphWrap = $('<div class="graph-wrap">');
+        $('#graphs-block').append(graphWrap);
+
         var graphElement = $('<div class="graph">');
-        $('#graphs-block').append(graphElement);
-        new Rickshaw.Graph.Ajax({
-            dataURL: namespace.api,
+        graphWrap.append(graphElement);
+        var graph = new Rickshaw.Graph({
             element: graphElement.get(0),
             width: 600,
             height: 400,
             renderer: 'bar',
-            onData: onData
+            series: series
         });
-    };
 
-    var onData = function(data) {
-        var series = [{data: [], color: 'lightblue'}];
-        var metrics = data.result;
-        for (i = 0; i < metrics.length; i++) {
-            var start = Date.parse(metrics[i].start) / 1000;
-            var end = Date.parse(metrics[i].end) / 1000;
-            var y = end - start; // NOTE: accurate to a millisecond, no more!
-            series[0].data.unshift({x: metrics.length - i - 1, y: y});
-        }
-        console.log(JSON.stringify(series));
-        return series;
+        var xAxisElement = $('<div class="graph x-axis">');
+        graphWrap.append(xAxisElement);
+
+        var xAxis = new Rickshaw.Graph.Axis.X({
+            element: xAxisElement.get(0),
+            orientation: 'bottom',
+            pixelsPerTick: 200,
+            graph: graph,
+            ticksTreatment: 'glow',
+            tickFormat: function(pos) {return xLabels[pos];},
+            tickRotation: 90,
+            tickOffsetX: -10,
+        });
+
+        var yAxis = new Rickshaw.Graph.Axis.Y({
+            graph: graph,
+            ticksTreatment: 'glow'
+        });
+
+        graph.render();
+
+        // var previewElement = $('<div class="preview">');
+        // graphElement.append(previewElement);
+        // var preview = new Rickshaw.Graph.RangeSlider({
+        //     graph: graph,
+        //     element: previewElement.get(0)
+        // });        
     };
 
     $.get('/api/' + getBoardKey())
         .done(function(data) {
-            for (var i = 0; i < data.namespaces.length; i++) {
-                initGraph(data.namespaces[i]);
-            }
+            $.each(data.namespaces, function(i, namespace) {
+                $.get(namespace.api, {depth: 1})
+                    .done(function(data2) {
+                        initGraph(namespace.name, data2);
+                    });
+            });
         });
 };
+
+////////////
+// Boards //
+////////////
+
+$.get('/api/').done(function(data) {
+    // TODO:: replace with a template
+    var ul = $('<ul class="nav nav-stacked">');
+    $.each(data.results, function(k, v) {
+        // ul.append();
+        var linkTemplate = 
+            '<table style="text-indent:25px; width:80%">' +
+            '<tr>' +
+            '  <td><a href="' + v.url + '">' + v.name + '</a></td>' +
+            '  <td><a href="{url}/day">Day </a></td>' +
+            '  <td><a href="{url}/hour">Hour </a></td>' +
+            '  <td><a href="{url}/minute">Min </a></td>' +
+            '  <td><a href="{url}/second">Sec </a></td>' +
+            '</tr>' +
+            '</table>';
+        ul.append(linkTemplate.replaceAll("{url}", v.url));
+    });
+    $('#list-boards-block').html(ul);
+});
 
 ///////////
 // Views //
@@ -71,15 +162,6 @@ if (getBoardKey()) {
     $('#create-board-block').hide();
 } else {
     $('#create-board-block').show();
-    $.get('/api/').done(function(data) {
-        //TODO:: replace with a template
-        var html = '<ul>';
-        for (var i = 0; i < data.results.length; i++) {
-            html += '<li><a href=' + data.results[i].url + '>' + data.results[i].name + '</a></li>'
-        }
-        html += '</ul>'
-        $('#list-boards-block').html(html);
-    })
 }
 
 if (getBoardKey()) {

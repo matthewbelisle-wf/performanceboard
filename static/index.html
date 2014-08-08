@@ -6,7 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="description" content="Collects performance metrics and displays them for real-time analysis">
 
-    <link rel="stylesheet" href="/static/d3/epoch.css">
+    <link rel="stylesheet" href="/static/d3/rickshaw.css">
     <link rel="stylesheet" href="/static/bootstrap/css/bootstrap.min.css">
     <link rel="stylesheet" href="/static/main.css">
   </head>
@@ -37,12 +37,17 @@
               </ul>
             </div>
           </div>
+          <div class="panel panel-default">
+            <div class="panel-heading">
+              Boards
+            </div>
+            <div id="list-boards-block" class="panel-body">
+            </div>
+          </div>
         </div>
-        <div id="board" class="col-md-9 text-center">
+        <div id="board" class="col-md-9">
           <div id="create-board-block">
             <button id="create-board" class="btn btn-primary btn-lg">+ New Board</button>
-          </div>
-          <div id="list-boards-block">
           </div>
           <div id="graphs-block">
           </div>

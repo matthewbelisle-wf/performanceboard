@@ -17,6 +17,7 @@ func makeMetricDtoList(metrics []Metric) []JsonResponse {
 	metricDtoList := []JsonResponse{}
 	for _, metric := range metrics {
 		metricDTO := make(JsonResponse)
+		metricDTO["namespace"] = metric.Namespace
 		metricDTO["start"] = metric.Start
 		metricDTO["end"] = metric.End
 		if len(metric.Meta) > 0 {
@@ -183,7 +184,7 @@ func getMetrics(writer http.ResponseWriter, request *http.Request) {
 
 	metricsDtoList := makeMetricDtoList(metrics)
 	response := JsonResponse{
-		"result": metricsDtoList,
+		"results": metricsDtoList,
 	}
 	if len(cursor) > 0 {
 		url := request.URL

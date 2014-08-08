@@ -127,7 +127,7 @@ func getAggregates(writer http.ResponseWriter, request *http.Request) {
 	cursor := request.FormValue("cursor")
 
 	// read aggregates
-	aggregates, cursor, err := readAggregates(context, boardKey, namespace, binType, time.Now(), duration, limit, cursor)
+	aggregates, cursor, err := readAggregates(context, boardKey, namespace, binType, end, duration, limit, cursor)
 	if err != nil {
 		http.Error(writer, err.Error(), http.StatusBadRequest)
 		return

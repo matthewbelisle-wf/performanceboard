@@ -2,6 +2,7 @@
   <div class="panel-heading">
     Boards
   </div>
-  <div class="panel-body">
-  </div>
+  <ul class="panel-body nav nav-stacked">
+    <li ng-repeat="board in boards"><a ng-href="{{ board.url }}">{{ board.name }}</a></li>
+  </ul>
 </div>

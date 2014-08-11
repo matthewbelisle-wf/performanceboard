@@ -34,7 +34,7 @@ func init() {
 	http.Handle("/", router)
 }
 
-var indexHtml, _ = ioutil.ReadFile("static/index.html")
+var indexHtml, _ = ioutil.ReadFile("client/static/index.html")
 
 func client(writer http.ResponseWriter, request *http.Request) {
 	if !Authorized(writer, request) {

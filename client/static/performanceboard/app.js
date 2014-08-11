@@ -24,8 +24,8 @@ app.config([
     function($routeProvider) {
         $routeProvider.
             when('/', {template: fs.readFileSync(__dirname + '/home.html', 'utf8')}).
-            when('/:board', {template: fs.readFileSync(__dirname + '/home.html', 'utf8')}).
-            // when('/', {template: fs.readFileSync(__dirname + '/home.html', 'utf8')}).
+            when('/:board', {template: fs.readFileSync(__dirname + '/board_view.html', 'utf8')}).
+            // when('/:board/:binType', {template: fs.readFileSync(__dirname + '/aggregate_view.html', 'utf8')}).
             otherwise({redirectTo: '/'});
     }
 ]);
@@ -34,3 +34,4 @@ app.directive('pbBoards', require('./boards/directive.js'));
 app.directive('pbDocs', require('./docs/directive.js'));
 app.directive('pbHeader', require('./header/directive.js'));
 app.directive('pbNewBoard', require('./new_board/directive.js'));
+app.directive('pbViewsNav', require('./views_nav/directive.js'));

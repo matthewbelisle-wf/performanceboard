@@ -71,7 +71,6 @@ var PerformanceboardService = function(){
                 type: "POST",
                 url: endPoint,
                 data: JSON.stringify(metric),
-                dataType: 'json',
                 complete: function(){}
             });
             delete metrics.key;

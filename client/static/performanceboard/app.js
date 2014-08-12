@@ -34,4 +34,5 @@ app.directive('pbBoards', require('./boards/directive.js'));
 app.directive('pbDocs', require('./docs/directive.js'));
 app.directive('pbHeader', require('./header/directive.js'));
 app.directive('pbNewBoard', require('./new_board/directive.js'));
-app.directive('pbViewsNav', require('./views_nav/directive.js'));
+app.directive('pbNav', require('./nav/directive.js'));
+app.directive('pbBoard', require('./board/directive.js'));

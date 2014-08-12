@@ -59,7 +59,7 @@ var PerformanceboardService = function(){
         }
 
         var metric = stack.pop();
-        metric.stop = new Date().toISOString();
+        metric.end = new Date().toISOString();
         if(metadata) {
             $.extend(metric.meta, metadata);
         }

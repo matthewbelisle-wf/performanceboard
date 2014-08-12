@@ -1,14 +1,12 @@
 package performanceboard
 
 import (
-    // "appengine"
+	// "appengine"
 	// "github.com/gorilla/mux"
-    "html/template"
+	"html/template"
 	"net/http"
 	"net/url"
 )
-
-
 
 func servePBJS(writer http.ResponseWriter, request *http.Request) {
 	// context := appengine.NewContext(request)
@@ -23,10 +21,10 @@ func servePBJS(writer http.ResponseWriter, request *http.Request) {
 	}
 
 	postURL := AbsURL(*url, request)
-    // context.Infof("postUrl:", postURL)
-    display_data := make(map[string]string)
+	// context.Infof("postUrl:", postURL)
+	display_data := make(map[string]string)
 	display_data["post_url"] = postURL
 
-    templates := template.Must(template.ParseFiles("static/pb.js"))
+	templates := template.Must(template.ParseFiles("static/pb.js"))
 	templates.ExecuteTemplate(writer, "pb.js", display_data)
 }

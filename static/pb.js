@@ -67,9 +67,12 @@ var PerformanceboardService = function(){
         var depth = stack.length;
         if(depth === 0) {
             $.ajax({
+                crossDomain: true,
                 type: "POST",
                 url: endPoint,
-                data: metric,
+                data: JSON.stringify(metric),
+                dataType: 'json',
+                complete: function(){}
             });
             delete metrics.key;
         } else {
@@ -88,4 +91,4 @@ var PerformanceboardService = function(){
         stop: stop
     };
 };
-
+window._pb = PerformanceboardService;

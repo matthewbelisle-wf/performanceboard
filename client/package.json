@@ -35,7 +35,9 @@
     "angular": "./static/bower_components/angular/angular.js",
     "angular-route": "./static/bower_components/angular-route/angular-route.js",
     "bootstrap": "./static/bower_components/bootstrap/dist/js/bootstrap.js",
-    "jquery": "./static/bower_components/jquery/dist/jquery.js"
+    "d3": "./static/bower_components/d3/d3.js",
+    "jquery": "./static/bower_components/jquery/dist/jquery.js",
+    "rickshaw": "./static/bower_components/rickshaw/rickshaw.js"
   },
   "browserify-shim": {
     "angular": {
@@ -54,6 +56,13 @@
         "jquery"
       ]
     },
-    "jquery": "$"
+    "jquery": "$",
+    "rickshaw": {
+      "exports": "Rickshaw",
+      "depends": [
+        "d3",
+        "jquery"
+      ]
+    }
   }
 }

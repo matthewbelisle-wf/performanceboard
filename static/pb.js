@@ -1,7 +1,7 @@
 // <script src="//ajax.googleapis.com/ajax/libs/jquery/1.11.1/jquery.min.js"></script>
 
 
-var PerformanceboardService = function(){
+PerformanceboardService = function(){
 
     var endPoint = '{{.post_url}}';
 
@@ -90,4 +90,3 @@ var PerformanceboardService = function(){
         stop: stop
     };
 };
-window._pb = PerformanceboardService;

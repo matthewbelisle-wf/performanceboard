@@ -6,8 +6,7 @@ threadsafe: true
 
 handlers:
 - url: /static
-  static_dir: client/static
-  application_readable: true
+  static_dir: client/build
 - url: /favicon.ico
   static_files: static/favicon.ico
   upload: static/favicon.ico

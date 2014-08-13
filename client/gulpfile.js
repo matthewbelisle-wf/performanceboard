@@ -1,5 +1,5 @@
-var bower = require('gulp-bower');
 var browserify = require('browserify');
+// var browserify = require('gulp-browserify');
 var concat = require('gulp-concat');
 var gulp = require('gulp');
 var jshint = require('gulp-jshint');
@@ -10,39 +10,30 @@ var uglify = require('gulp-uglify');
 
 gulp.task('jshint', function() {
     gulp.src(['./gulpfile.js',
-              './static/index.js',
-              './static/performanceboard/**/*.js'])
+              './src/**/*.js'])
         .pipe(jshint())
         .pipe(jshint.reporter('default'));
 });
 
-gulp.task('bower', function() {
-    return bower('./static/bower_components');
-});
-
-gulp.task('build-js', ['bower'], function() {
-    browserify('./static/index.js')
-        .bundle() // {debug: true}
+gulp.task('build-js', function() {
+    browserify({entries: './src/index.js'})
+        .bundle()
         .pipe(source('build.js'))
-        .pipe(streamify(uglify()))
-        .pipe(gulp.dest('./static'));
+        .pipe(gulp.dest('./build'));
 });
 
-gulp.task('build-css', ['bower'], function() {
+gulp.task('build-css', function() {
         gulp.src([
-            './static/bower_components/bootstrap/dist/css/bootstrap.css',
-            './static/performanceboard/**/*.css'
+            './node_modules/bootstrap/dist/css/bootstrap.css',
+            './src/**/*.css'
         ])
         .pipe(minifyCSS({root: '.'}))
         .pipe(concat('build.css'))
-        .pipe(gulp.dest('./static'));
+        .pipe(gulp.dest('./build'));
 });
 
 gulp.task('watch', function() {
-    gulp.watch([
-        './static/index.*',
-        './static/performanceboard/**/*'
-    ], ['default']);
+    gulp.watch(['./src/**/*'], ['default']);
 });
 
 gulp.task('default', [

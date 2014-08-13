@@ -48,11 +48,9 @@ var directive = function(
         $.each(seriesMap, function(k, v) {
             series.push(v);
         });
-        
-        console.log(angular.element('#graph-' + index)[0]);
-        console.log(series);
+
         var graph = new Rickshaw.Graph({
-            element: angular.element('#graph-' + index)[0],
+            element: $('#graph-' + index).get(0),
             height: 400,
             renderer: 'bar',
             series: series
@@ -77,7 +75,7 @@ var directive = function(
         //     ticksTreatment: 'glow'
         // });
 
-        // graph.render();
+        graph.render();
     };
 
     return {

@@ -3,17 +3,20 @@
   "version": "0.0.0",
   "main": "gulpfile.js",
   "devDependencies": {
+    "angular": "~1.2.21",
+    "angular-route": "~1.2.17-build.163.1",
     "bootstrap": "~3.2.0",
     "brfs": "~1.2.0",
-    "browserify": "~4.2.3",
-    "browserify-shim": "~3.6.0",
+    "browserify": "~5.10.0",
     "gulp": "~3.8.6",
-    "gulp-bower": "0.0.6",
+    "gulp-browserify": "~0.5.0",
     "gulp-concat": "^2.2.0",
     "gulp-jshint": "~1.8.4",
     "gulp-minify-css": "^0.3.1",
     "gulp-streamify": "0.0.5",
     "gulp-uglify": "~0.3.1",
+    "jquery": "~2.1.1",
+    "rickshaw": "~1.4.6",
     "vinyl-source-stream": "~0.1.1"
   },
   "repository": {
@@ -24,45 +27,10 @@
   "bugs": {
     "url": "https://github.com/mgbelisle/performanceboard/issues"
   },
-  "homepage": "http://performanceboard.appspot.com/",
+  "homepage": "http://performanceboard-public.appspot.com/",
   "browserify": {
     "transform": [
-      "brfs",
-      "browserify-shim"
+      "brfs"
     ]
-  },
-  "browser": {
-    "angular": "./static/bower_components/angular/angular.js",
-    "angular-route": "./static/bower_components/angular-route/angular-route.js",
-    "bootstrap": "./static/bower_components/bootstrap/dist/js/bootstrap.js",
-    "d3": "./static/bower_components/d3/d3.js",
-    "jquery": "./static/bower_components/jquery/dist/jquery.js",
-    "rickshaw": "./static/bower_components/rickshaw/rickshaw.js"
-  },
-  "browserify-shim": {
-    "angular": {
-      "exports": "angular",
-      "depends": [
-        "jquery"
-      ]
-    },
-    "angular-route": {
-      "depends": [
-        "angular"
-      ]
-    },
-    "bootstrap": {
-      "depends": [
-        "jquery"
-      ]
-    },
-    "jquery": "$",
-    "rickshaw": {
-      "exports": "Rickshaw",
-      "depends": [
-        "d3",
-        "jquery"
-      ]
-    }
   }
 }

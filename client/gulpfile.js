@@ -1,5 +1,4 @@
 var browserify = require('browserify');
-// var browserify = require('gulp-browserify');
 var concat = require('gulp-concat');
 var gulp = require('gulp');
 var jshint = require('gulp-jshint');
@@ -16,7 +15,7 @@ gulp.task('jshint', function() {
 });
 
 gulp.task('build-js', function() {
-    browserify({entries: './src/index.js'})
+    browserify({entries: './src/index.js', debug: true})
         .bundle()
         .pipe(source('build.js'))
         .pipe(gulp.dest('./build'));

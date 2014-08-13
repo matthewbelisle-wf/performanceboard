@@ -30,7 +30,7 @@ func init() {
 	router.HandleFunc("/api/", createBoard).Methods("POST")
 	router.HandleFunc("/api/", listBoards).Methods("GET")
 	router.HandleFunc("/api/", methodNotAllowed)
-	router.HandleFunc("/pb.js", servePBJS).Methods("GET")
+	router.HandleFunc("/pbjs/{board}", servePBJS).Methods("GET")
 	router.HandleFunc("/{client:.*}", client).Name("client")
 	http.Handle("/", router)
 }

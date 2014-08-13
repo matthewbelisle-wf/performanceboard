@@ -56,24 +56,21 @@ var directive = function(
             series: series
         });
 
-        // var xAxisElement = $('<div class="graph x-axis">');
-        // graphWrap.append(xAxisElement);
+        var xAxis = new Rickshaw.Graph.Axis.X({
+            element: $('#x-axis-' + index).get(0),
+            orientation: 'bottom',
+            pixelsPerTick: 200,
+            graph: graph,
+            ticksTreatment: 'glow',
+            tickFormat: function(pos) {return xLabels[pos];},
+            tickRotation: 90,
+            tickOffsetX: -10,
+        });
 
-        // var xAxis = new Rickshaw.Graph.Axis.X({
-        //     element: xAxisElement.get(0),
-        //     orientation: 'bottom',
-        //     pixelsPerTick: 200,
-        //     graph: graph,
-        //     ticksTreatment: 'glow',
-        //     tickFormat: function(pos) {return xLabels[pos];},
-        //     tickRotation: 90,
-        //     tickOffsetX: -10,
-        // });
-
-        // var yAxis = new Rickshaw.Graph.Axis.Y({
-        //     graph: graph,
-        //     ticksTreatment: 'glow'
-        // });
+        var yAxis = new Rickshaw.Graph.Axis.Y({
+            graph: graph,
+            ticksTreatment: 'glow'
+        });
 
         graph.render();
     };

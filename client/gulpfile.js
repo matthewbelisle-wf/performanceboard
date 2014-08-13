@@ -15,7 +15,13 @@ gulp.task('jshint', function() {
 });
 
 gulp.task('build-js', function() {
-    browserify({entries: './index.js', debug: true})
+    browserify({
+        entries: [
+            './index.js',
+            './node_modules/bootstrap/dist/js/bootstrap.js'
+        ],
+        debug: true
+    })
         .bundle()
         .pipe(source('build.js'))
         // .pipe(streamify(uglify())) // TODO: Figure out why this breaks
@@ -25,6 +31,7 @@ gulp.task('build-js', function() {
 gulp.task('build-css', function() {
         gulp.src([
             './node_modules/bootstrap/dist/css/bootstrap.css',
+            './node_modules/rickshaw/rickshaw.css',
             './src/**/*.css'
         ])
         .pipe(minifyCSS({root: '.'}))

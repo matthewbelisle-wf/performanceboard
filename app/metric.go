@@ -200,6 +200,10 @@ func getMetrics(writer http.ResponseWriter, request *http.Request) {
 
 // TODO memcache the board entity and validate boardKey against it
 func postMetric(writer http.ResponseWriter, request *http.Request) {
+	writer.Header().Add("Access-Control-Allow-Origin", "*")
+	writer.Header().Add("Access-Control-Allow-Methods", "OPTIONS, POST")
+	writer.Header().Add("Access-Control-Allow-Headers", "Content-Type")
+
 	// Checks that the key is valid
 	encodedBoardKey := mux.Vars(request)["board"]
 	boardKey, err := datastore.DecodeKey(encodedBoardKey)

@@ -18,10 +18,8 @@ type Post struct {
 
 func getPost(writer http.ResponseWriter, request *http.Request) {
 	context := appengine.NewContext(request)
-	context.Infof("getPost")
 	encodedKey := mux.Vars(request)["post_key"]
 	postKey, err := datastore.DecodeKey(encodedKey)
-	context.Infof("looking up:%s", encodedKey)
 	if err != nil {
 		http.Error(writer, err.Error(), http.StatusBadRequest)
 		return

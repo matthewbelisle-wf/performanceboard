@@ -192,9 +192,10 @@ func aggregateMore(context appengine.Context, t time.Time, boardKeyString string
 	truncTime := t.Truncate(aggregateDuration)
 
 	// readAggregates reads time backwards, so we jump time forward to read our duration
-	aggregateMetrics, err := readAggregates(
+	aggregateMetrics, _, err := readAggregates(
 		context, boardKey, namespace, aggregateBinType,
-		truncTime.Add(aggregateDuration), aggregateDuration, 0, "")
+		truncTime.Add(aggregateDuration), aggregateDuration, -1, "")
+
 	if err != nil {
 		context.Errorf("aggregateMore failed to readAggregates on board: %s, %v", boardKeyString, err)
 		return

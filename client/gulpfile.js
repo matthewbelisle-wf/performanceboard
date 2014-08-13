@@ -15,10 +15,11 @@ gulp.task('jshint', function() {
 });
 
 gulp.task('build-js', function() {
-    browserify({entries: './src/index.js', debug: true})
+    browserify({entries: './index.js', debug: true})
         .bundle()
         .pipe(source('build.js'))
-        .pipe(gulp.dest('./build'));
+        // .pipe(streamify(uglify())) // TODO: Figure out why this breaks
+        .pipe(gulp.dest('.'));
 });
 
 gulp.task('build-css', function() {
@@ -28,7 +29,7 @@ gulp.task('build-css', function() {
         ])
         .pipe(minifyCSS({root: '.'}))
         .pipe(concat('build.css'))
-        .pipe(gulp.dest('./build'));
+        .pipe(gulp.dest('.'));
 });
 
 gulp.task('watch', function() {

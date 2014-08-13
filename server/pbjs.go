@@ -13,7 +13,7 @@ func servePBJS(writer http.ResponseWriter, request *http.Request) {
 	display_data := make(map[string]string)
 	display_data["post_url"] = postURL
 
-	templates := template.Must(template.ParseFiles("static/pb.js"))
+	templates := template.Must(template.ParseFiles("server/templates/pb.js"))
 	templates.ExecuteTemplate(writer, "pb.js", display_data)
 	writer.Header().Set("content-type", "application/javascript")
 }

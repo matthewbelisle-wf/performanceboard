@@ -7,7 +7,7 @@ var d3 = require('d3');
 var directive = function(
     $http
 ) {
-    var initGraph = function(index, data) {
+    var initGraph = function(index, data, aggregate) {
         var binStats = data.results;
         var xLabels = [];
         var seriesMap = {
@@ -31,10 +31,10 @@ var directive = function(
             },
             count: {
                 data: [],
-                renderer: 'stack',
+                renderer: 'bar',
                 name: 'counts',
                 color: 'grey'
-            },
+            }
         };
 
         var min = -1;
@@ -43,8 +43,8 @@ var directive = function(
 
         $.each(binStats, function(i, binStat) {
             xLabels.push(binStat.start);
-            var start = Date.parse(binStat.start) / 1000;
-            var x = binStats.length - i - 1;
+            var x = Date.parse(binStat.start) / 1000;
+            // var x = binStats.length - i - 1; //descending order (newest to the right)
             if(min === -1 || min > binStat.min)
                 min = binStat.min;
             if(max === -1 || max < binStat.max)
@@ -57,6 +57,8 @@ var directive = function(
             seriesMap.max.data.unshift({x: x, y: binStat.max});
             seriesMap.count.data.unshift({x: x, y: binStat.count});
         });
+
+        xLabels = xLabels.reverse(); //descending order (newest to the right)
 
         var scale = d3.scale.linear().domain([0, max]).nice();
         seriesMap.max.scale = scale;
@@ -78,7 +80,8 @@ var directive = function(
             element: $('#graph-' + index).get(0),
             height: 400,
             renderer: 'multi',
-            series: series
+            series: series,
+            interpolation: 'linear',
         });
 
         var xAxis = new Rickshaw.Graph.Axis.X({
@@ -87,17 +90,12 @@ var directive = function(
             pixelsPerTick: 200,
             graph: graph,
             ticksTreatment: 'glow',
-            tickFormat: function(pos) {return xLabels[pos];},
+            tickFormat: function(pos) {
+                return (new Date(pos * 1000)).toGMTString();
+            },
             tickRotation: 90,
             tickOffsetX: -10,
         });
-
-        // TODO get rid of this
-        // new Rickshaw.Graph.Axis.Y({
-        //     graph: graph,
-        //     ticksTreatment: 'glow',
-        //     tickFormat: function(y) { return y + 'ms'; }
-        // });
 
         // TODO hang this on an HTML element
         new Rickshaw.Graph.Axis.Y.Scaled({
@@ -113,10 +111,6 @@ var directive = function(
         //   orientation: 'right',
         //   scale: scale2,
         // });
-
-        new Rickshaw.Graph.Axis.Time({
-          graph: graph
-        });
 
         new Rickshaw.Graph.Legend({
             graph: graph,
@@ -137,18 +131,18 @@ var directive = function(
             scope.name = attrs.name;
             scope.index = attrs.index;
             var path = window.location.pathname;
-            var aggregate = '/second';
+            var aggregate = 'second';
             if(path.endsWith('minute'))
-                aggregate = '/minute';
+                aggregate = 'minute';
             if(path.endsWith('hour'))
-                aggregate = '/hour';
+                aggregate = 'hour';
             if(path.endsWith('day'))
-                aggregate = '/day';
+                aggregate = 'day';
 
-            var api = attrs.api + aggregate;
+            var api = attrs.api + '/' + aggregate;
             $http({method: 'GET', url: api}).
                 success(function(data) {
-                    initGraph(attrs.index, data);
+                    initGraph(attrs.index, data, aggregate);
                 });
         }
     };

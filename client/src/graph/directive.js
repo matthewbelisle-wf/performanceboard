@@ -53,7 +53,8 @@ var directive = function(
             element: $('#graph-' + index).get(0),
             height: 400,
             renderer: 'bar',
-            series: series
+            interpolation: 'linear',
+            series: series,
         });
 
         var xAxis = new Rickshaw.Graph.Axis.X({
@@ -62,7 +63,10 @@ var directive = function(
             pixelsPerTick: 200,
             graph: graph,
             ticksTreatment: 'glow',
-            tickFormat: function(pos) {return xLabels[pos];},
+            tickFormat: function(pos) {
+                // return (new Date(pos * 1000)).toGMTString();
+                return (new Date(xLabels[pos])).toGMTString();
+            },            
             tickRotation: 90,
             tickOffsetX: -10,
         });

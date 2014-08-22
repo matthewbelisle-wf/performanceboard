@@ -78,7 +78,6 @@ Any language with a REST client can use PerformanceBoard by making posts to the 
 to make things easier there are some plugins for popular languages.
 
 * [performanceboard-py](https://github.com/mgbelisle/performanceboard-py)
-* [performanceboard-js](https://github.com/mgbelisle/performanceboard-js)
 
 Dev Server
 ----------
@@ -86,7 +85,7 @@ Dev Server
 Serve the app locally from the root directory.
 
 ```
-$ go get ./app/
+$ go get ./server/
 ```
 
 Ignore the errors about [unrecognized import paths for appengine](http://stackoverflow.com/questions/22674307/go-get-package-appengine-unrecognized-import-path-appengine).

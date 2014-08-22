@@ -8,6 +8,7 @@
     "bootstrap": "~3.2.0",
     "brfs": "~1.2.0",
     "browserify": "~5.10.0",
+    "d3":"~3.4.11",
     "gulp": "~3.8.6",
     "gulp-concat": "^2.2.0",
     "gulp-jshint": "~1.8.4",

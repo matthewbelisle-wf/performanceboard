@@ -5,7 +5,8 @@ var fs = require('fs');
 var d3 = require('d3');
 
 var directive = function(
-    $http
+    $http,
+    $routeParams
 ) {
     var initGraph = function(index, data, aggregate) {
         var binStats = data.results;
@@ -130,14 +131,7 @@ var directive = function(
         link: function(scope, element, attrs) {
             scope.name = attrs.name;
             scope.index = attrs.index;
-            var path = window.location.pathname;
-            var aggregate = 'second';
-            if(path.endsWith('minute'))
-                aggregate = 'minute';
-            if(path.endsWith('hour'))
-                aggregate = 'hour';
-            if(path.endsWith('day'))
-                aggregate = 'day';
+            var aggregate = $routeParams.binType;
 
             var api = attrs.api + '/' + aggregate;
             $http({method: 'GET', url: api}).
@@ -148,7 +142,8 @@ var directive = function(
     };
 };
 directive.$inject = [
-    '$http'
+    '$http',
+    '$routeParams'
 ];
 
 module.exports = directive;

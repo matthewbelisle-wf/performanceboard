@@ -38,10 +38,3 @@ app.directive('pbBoard', require('./board/directive.js'));
 app.directive('pbGraph', require('./graph/directive.js'));
 app.directive('pbGraphAgg', require('./graph_agg/directive.js'));
 app.directive('pbBoardAgg', require('./board_agg/directive.js'));
-
-// Things that should have been part of Javascript
-if (typeof String.prototype.endsWith !== 'function') {
-    String.prototype.endsWith = function(suffix) {
-        return this.indexOf(suffix, this.length - suffix.length) !== -1;
-    };
-}

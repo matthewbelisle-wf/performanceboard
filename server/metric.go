@@ -11,6 +11,21 @@ import (
 	"time"
 )
 
+// A Metric is a namespaced measurement. A metric's parent (for Ancestor queries)
+// is the metric that contained it in the origional Post. Therefore, a Metric
+// with the namespace 'X.Y.Z' will have an Ancestor Metric with a namespace
+// of 'X.Y'.
+const MetricKind = "Metric"
+
+type Metric struct {
+	Key       *datastore.Key `datastore:"-"`
+	Namespace string         // dot seperated name hierarchy
+	Meta      string         `datastore:",noindex"` // stringified JSON object
+	Start     time.Time      // UTC
+	End       time.Time      // UTC
+	Children  []Metric       `datastore:"-"`
+}
+
 const DEFAULT_LIMIT = 100
 
 func makeMetricDtoList(metrics []Metric) []JsonResponse {
@@ -217,15 +232,27 @@ func postMetric(writer http.ResponseWriter, request *http.Request) {
 		http.Error(writer, err.Error(), http.StatusBadRequest)
 		return
 	}
+
 	post := Post{
 		Body:      string(body),
 		Timestamp: time.Now(),
 	}
 	context := appengine.NewContext(request)
+
+	context.Infof("recieved: %d bytes of data", len(body))
 	post.Key, err = datastore.Put(context, datastore.NewIncompleteKey(context, PostKind, boardKey), &post)
 	if err != nil {
 		http.Error(writer, err.Error(), http.StatusBadRequest)
 		return
 	}
-	digestPost.Call(context, post.Key.Encode())
+
+	encodedKey := post.Key.Encode()
+	context.Infof("queueing key %s", encodedKey)
+	queueItem := AggregateQueue{
+		PostKey:   encodedKey,
+		Timestamp: time.Now(),
+	}
+	// parent key could be the boardKey, but parent relationships slow down writing and returning
+	datastore.Put(context, datastore.NewIncompleteKey(context, AggregateQueueKind, nil), &queueItem)
+	digestPostQueue.Call(context, encodedKey)
 }

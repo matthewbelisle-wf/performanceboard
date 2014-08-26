@@ -18,33 +18,9 @@ type PostBody struct {
 	Children  []PostBody             `json:"children"`
 }
 
-// A Metric is a namespaced measurement. A metric's parent (for Ancestor queries)
-// is the metric that contained it in the origional Post. Therefore, a Metric
-// with the namespace 'X.Y.Z' will have an Ancestor Metric with a namespace
-// of 'X.Y'.
-const MetricKind = "Metric"
-
-type Metric struct {
-	Key       *datastore.Key `datastore:"-"`
-	Namespace string         // dot seperated name hierarchy
-	Meta      string         `datastore:",noindex"` // stringified JSON object
-	Start     time.Time      // UTC
-	End       time.Time      // UTC
-	Children  []Metric       `datastore:"-"`
-}
-
-// The Taxonomy table defines namespace relationships for fast lookup
-// Given static assignment of a namespace to a measurement on the client
-// this table should not continue to grow in size for repeated Posts.
-const TaxonomyKind = "Taxonomy"
-
-type Taxonomy struct {
-	Key        *datastore.Key `datastore:"-"`
-	BoardKey   string         // board this taxonomy is a member of
-	Namespace  string         // parent namespace, empty string for top-level namespaces
-	Childspace string         // a single child namespace of Namespace field
-}
-
+// An AggregateMetric is a computed min, mean and max over a time interval
+// second is the smallest block of time; minute, hour and day measure are
+// derived from the smaller bins
 const AggregateMetricKind = "AggregateMetric"
 
 type AggregateMetric struct {
@@ -60,7 +36,15 @@ type AggregateMetric struct {
 	Count     int64
 }
 
+const AggregateQueueKind = "AggregateQueue"
+
+type AggregateQueue struct {
+	PostKey   string
+	Timestamp time.Time
+}
+
 func storeTaxonomy(context appengine.Context, boardKey string, parentNamespace string, childNamespace string) {
+	// context.Infof("storeTaxonomy:%s,%s", parentNamespace, childNamespace)
 	taxonomy := Taxonomy{}
 	keyID := fmt.Sprintf("%s:%s:%s", boardKey, parentNamespace, childNamespace)
 	taxonomy.Key = datastore.NewKey(context, TaxonomyKind, keyID, 0, nil)
@@ -73,12 +57,14 @@ func storeTaxonomy(context appengine.Context, boardKey string, parentNamespace s
 }
 
 // decompose a raw Post event into its hierarchical namespaces and write the Metrics to disk
-func storeMetric(context appengine.Context, boardKeyString string, postKey string, data PostBody, ancestor *Metric) (string, error) {
+func storeMetric(context appengine.Context, boardKeyString string, postKey string, data PostBody, ancestor *Metric, putBatch *PutBatch) (string, error) {
 	metric := Metric{}
 	metric.Namespace = data.Namespace
 	if ancestor != nil {
 		metric.Namespace = fmt.Sprintf("%s.%s", ancestor.Namespace, metric.Namespace)
 	}
+	// context.Infof("storeMetric:%s", metric.Namespace)
+
 	metadata := ""
 	if len(data.Meta) > 0 {
 		if meta, err := json.Marshal(data.Meta); err == nil {
@@ -97,14 +83,18 @@ func storeMetric(context appengine.Context, boardKeyString string, postKey strin
 	} else {
 		metric.Key = datastore.NewKey(context, MetricKind, keyID, 0, ancestor.Key)
 	}
-	_, err := datastore.Put(context, metric.Key, &metric)
-	if err != nil {
-		context.Errorf("Error on Metric Put:%v", err)
-		return "", err
-	}
+
+	putBatch.AddMetric(&metric)
+	// _, err := datastore.Put(context, metric.Key, &metric)
+	// if err != nil {
+	// 	context.Errorf("Error on Metric Put:%v", err)
+	// 	return "", err
+	// }
+
 	// recursive storage for child objects to the same entity table
 	for _, child := range data.Children {
-		if childNamespace, err := storeMetric(context, boardKeyString, postKey, child, &metric); err == nil {
+		if childNamespace, err := storeMetric(context, boardKeyString, postKey, child, &metric, putBatch); err == nil {
+			// TODO batch taxonomy
 			storeTaxonomy(context, boardKeyString, metric.Namespace, childNamespace)
 		} else {
 			context.Errorf("Error storing Taxonomy:%v", err)
@@ -112,12 +102,14 @@ func storeMetric(context appengine.Context, boardKeyString string, postKey strin
 	}
 
 	// TODO optimize how often the aggregate chain is called to once per namespace per post
-	aggregateSecond(context, metric.Start, boardKeyString, metric.Namespace)
+	putBatch.AddAggBatchItem(metric.Start, boardKeyString, metric.Namespace)
+	// aggregateSecond(context, metric.Start, boardKeyString, metric.Namespace)
 
 	return metric.Namespace, nil
 }
 
-func aggregateSecond(context appengine.Context, t time.Time, boardKeyString string, namespace string) {
+func aggregateSecond(context appengine.Context, t time.Time, boardKeyString string, namespace string, aggMetricsBatch *AggregateMetricBatch) {
+	// context.Infof("aggregateSecond:%v", t)
 	// Read the metrics table for a one-second interval
 	boardKey, err := datastore.DecodeKey(boardKeyString)
 	if err != nil {
@@ -163,15 +155,17 @@ func aggregateSecond(context appengine.Context, t time.Time, boardKeyString stri
 		Sum:       int64(sum),
 		Count:     int64(count),
 	}
-	if _, err := datastore.Put(context, aggMetric.Key, &aggMetric); err != nil {
-		context.Errorf("Error on Metric Put:%v", err)
-		return
-	}
+    aggMetricsBatch.Add(&aggMetric)
+	// if _, err := datastore.Put(context, aggMetric.Key, &aggMetric); err != nil {
+	// 	context.Errorf("Error on AggregateMetric Put:%v", err)
+	// 	return
+	// }
 
-	aggregateMore(context, t, boardKeyString, namespace, "minute")
+	aggregateMore(context, t, boardKeyString, namespace, "minute", aggMetricsBatch)
 }
 
-func aggregateMore(context appengine.Context, t time.Time, boardKeyString string, namespace string, binType string) {
+func aggregateMore(context appengine.Context, t time.Time, boardKeyString string, namespace string, binType string, aggMetricsBatch *AggregateMetricBatch) {
+	// context.Infof("aggregateMore:%s,%v", binType, t)
 	// Read the AggregateMetric table for a one-minute interval
 	boardKey, _ := datastore.DecodeKey(boardKeyString)
 	var aggregateBinType string
@@ -235,39 +229,101 @@ func aggregateMore(context appengine.Context, t time.Time, boardKeyString string
 		Sum:       int64(sum),
 		Count:     int64(count),
 	}
-	if _, err := datastore.Put(context, aggMetric.Key, &aggMetric); err != nil {
-		context.Errorf("Error on Metric Put:%v", err)
-		return
-	}
+
+    aggMetricsBatch.Add(&aggMetric)
+	// if _, err := datastore.Put(context, aggMetric.Key, &aggMetric); err != nil {
+	// 	context.Errorf("Error on Metric Put:%v", err)
+	// 	return
+	// }
 
 	// TODO delay continued aggregation to let help let previous aggregation data settle
 	switch binType {
 	case "minute":
-		aggregateMore(context, t, boardKeyString, namespace, "hour")
+		aggregateMore(context, t, boardKeyString, namespace, "hour", aggMetricsBatch)
 	case "hour":
-		aggregateMore(context, t, boardKeyString, namespace, "day")
+		aggregateMore(context, t, boardKeyString, namespace, "day", aggMetricsBatch)
 	}
 
 }
 
-// This is the entry point into the deferred context of input digestion
-var digestPost = delay.Func("key", func(c appengine.Context, postKeyString string) {
+// entry point to decompose a post into
+func digestPost(context appengine.Context, postKeyString string) *AggregationBatch {
 	post := Post{}
 	postKey, _ := datastore.DecodeKey(postKeyString)
-	if err := datastore.Get(c, postKey, &post); err != nil {
-		return
+	if err := datastore.Get(context, postKey, &post); err != nil {
+		return nil
 	}
 	body := PostBody{}
 	if err := json.Unmarshal([]byte(post.Body), &body); err != nil {
-		c.Errorf("Error in Unmarshal:%v", err)
-		return
+		context.Errorf("Error in Unmarshal:%v", err)
+		return nil
 	}
 
 	// enter the recursive storage routine
 	boardKeyString := postKey.Parent().Encode()
-	if namespace, err := storeMetric(c, boardKeyString, postKeyString, body, nil); err == nil {
-		storeTaxonomy(c, boardKeyString, "", namespace)
+
+	putBatch := NewPutBatch()
+	if namespace, err := storeMetric(context, boardKeyString, postKeyString, body, nil, putBatch); err == nil {
+		storeTaxonomy(context, boardKeyString, "", namespace)
+
+		keys, metrics := putBatch.GetMetrics()
+        for i := 0; i < len(keys); i = i + 100 {
+            stopIdx := i + 100
+            if stopIdx > len(keys) {
+                stopIdx = len(keys)
+            }
+
+    		if _, err := datastore.PutMulti(context, keys[i:stopIdx], metrics[i:stopIdx]); err != nil {
+    			context.Errorf("Error on Metric PutMulti:%v", err)
+    		}
+        }
+
+		// context.Infof("after all batch puts, aggregation count: %d", len(putBatch.Aggregations))
+		// for _, item := range putBatch.Aggregations {
+		// 	aggregateSecond(context, item.TimeStamp, item.BoardKey, item.Namespace)
+		// }
 	} else {
-		c.Errorf("Error storing Taxonomy:%v", err)
+		context.Errorf("Error storing Taxonomy:%v", err)
 	}
+    return &putBatch.Aggregations
+}
+
+// This is the entry point into the deferred context of input digestion
+// it fetchs all the keys to be processed, iterates, and deletes keys from the table
+var digestPostQueue = delay.Func("key", func(context appengine.Context, postKeyString string) error {
+	time.Sleep(100 * time.Millisecond)
+	context.Infof("Running delayed process on AggregateQueue")
+	queuedItems := []AggregateQueue{}
+    aggBatch := AggregationBatch{}
+	if keys, err := datastore.NewQuery(AggregateQueueKind).GetAll(context, &queuedItems); err == nil {
+		for i, queuedItem := range queuedItems {
+			context.Infof("processing post #%d,%s", i, queuedItem.PostKey)
+			aggBatch.Merge(digestPost(context, queuedItem.PostKey))
+			datastore.Delete(context, keys[i])
+			context.Infof("finished wth post #%d, %s", i, queuedItem.PostKey)
+		}
+	}
+
+    // process all the aggregations into entitys
+    context.Infof("aggregation task count: %d", len(aggBatch))
+    aggMetricsBatch := AggregateMetricBatch{}
+    for _, item := range aggBatch {
+        aggregateSecond(context, item.TimeStamp, item.BoardKey, item.Namespace, &aggMetricsBatch)
+    }
+
+    keys, metrics := aggMetricsBatch.GetMetrics()
+    for i := 0; i < len(keys); i = i + 100 {
+        stopIdx := i + 100
+        if stopIdx > len(keys) {
+            stopIdx = len(keys)
+        }
+
+        context.Infof("before agg batch put")
+        if _, err := datastore.PutMulti(context, keys[i:stopIdx], metrics[i:stopIdx]); err != nil {
+            context.Errorf("Error on Metric PutMulti:%v", err)
+        }
+        context.Infof("after agg batch put")
+    }
+
+	return nil // implies everything went well
 })

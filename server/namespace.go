@@ -13,6 +13,18 @@ type Namespace struct {
 	Children []*Namespace `datastore:"-" json:"children"`
 }
 
+// The Taxonomy table defines namespace relationships for fast lookup
+// Given static assignment of a namespace to a measurement on the client
+// this table should not continue to grow in size for repeated Posts.
+const TaxonomyKind = "Taxonomy"
+
+type Taxonomy struct {
+	Key        *datastore.Key `datastore:"-"`
+	BoardKey   string         // board this taxonomy is a member of
+	Namespace  string         // parent namespace, empty string for top-level namespaces
+	Childspace string         // a single child namespace of Namespace field
+}
+
 func readNamespaceChildren(context appengine.Context, boardKeyString string, rootNamespace string) []string {
 	q := datastore.NewQuery(TaxonomyKind).
 		Filter("BoardKey =", boardKeyString).

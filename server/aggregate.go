@@ -9,15 +9,15 @@ import (
 	"time"
 )
 
-func makeAggregateDtoList(metrics []AggregateMetric) []JsonResponse {
+func makeAggregateDtoList(metrics []*AggregateMetric) []JsonResponse {
 	aggDtoList := []JsonResponse{}
 	for _, metric := range metrics {
 		aggDTO := make(JsonResponse)
-		aggDTO["start"] = metric.StartTime
-		aggDTO["min"] = metric.Min
-		aggDTO["max"] = metric.Max
-		aggDTO["mean"] = metric.Mean
-		aggDTO["count"] = metric.Count
+		aggDTO["start"] = (*metric).StartTime
+		aggDTO["min"] = (*metric).Min
+		aggDTO["max"] = (*metric).Max
+		aggDTO["mean"] = (*metric).Mean
+		aggDTO["count"] = (*metric).Count
 		aggDtoList = append(aggDtoList, aggDTO)
 	}
 	return aggDtoList
@@ -26,7 +26,7 @@ func makeAggregateDtoList(metrics []AggregateMetric) []JsonResponse {
 func readAggregates(context appengine.Context,
 	boardKey *datastore.Key, namespace string, binType string,
 	newestTime time.Time, duration time.Duration,
-	limit int, cursor string) ([]AggregateMetric, string, error) {
+	limit int, cursor string) ([]*AggregateMetric, string, error) {
 	// newestTime: same as 'end'
 	// duration: 0 if it should go forever
 	// binTypes: "day", "hour", "minute", or "second"
@@ -47,11 +47,11 @@ func readAggregates(context appengine.Context,
 		if c, err := datastore.DecodeCursor(cursor); err == nil {
 			q = q.Start(c)
 		} else {
-			return []AggregateMetric{}, "", err
+			return []*AggregateMetric{}, "", err
 		}
 	}
 
-	var aggregates []AggregateMetric
+	var aggregates []*AggregateMetric
 	iter := q.Run(context)
 	for limit < 0 || len(aggregates) < limit {
 		var aggregate AggregateMetric
@@ -60,7 +60,7 @@ func readAggregates(context appengine.Context,
 		} else {
 			break
 		}
-		aggregates = append(aggregates, aggregate)
+		aggregates = append(aggregates, &aggregate)
 	}
 
 	if len(aggregates) == limit {

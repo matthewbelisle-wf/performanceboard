@@ -105,7 +105,7 @@ func storeMetric(context appengine.Context, boardKeyString string, postKey strin
 }
 
 func aggregateSecond(context appengine.Context, t time.Time, boardKeyString string, namespace string, aggMetricsBatch *AggregateMetricBatch) {
-	// context.Infof("aggregateSecond:%v", t)
+	context.Infof("aggregateSecond:%v", t)
 	// Read the metrics table for a one-second interval
 	boardKey, err := datastore.DecodeKey(boardKeyString)
 	if err != nil {
@@ -159,7 +159,7 @@ func aggregateSecond(context appengine.Context, t time.Time, boardKeyString stri
 }
 
 func aggregateMore(context appengine.Context, t time.Time, boardKeyString string, namespace string, binType string, aggMetricsBatch *AggregateMetricBatch) {
-	// context.Infof("aggregateMore:%s,%v", binType, t)
+	context.Infof("aggregateMore:%s,%v", binType, t)
 	// Read the AggregateMetric table for a one-minute interval
 	boardKey, _ := datastore.DecodeKey(boardKeyString)
 	var aggregateBinType string
@@ -184,11 +184,22 @@ func aggregateMore(context appengine.Context, t time.Time, boardKeyString string
 		context, boardKey, namespace, aggregateBinType,
 		truncTime.Add(aggregateDuration), aggregateDuration, -1, "")
 
+    // also read metrics from the unstored aggMetricsBatch
+    for _, aggMetric := range *aggMetricsBatch {
+        if aggMetric.StartTime.Truncate(aggregateDuration) == truncTime &&
+           aggMetric.BinType == aggregateBinType &&
+           aggMetric.BoardKey == boardKeyString &&
+           aggMetric.Namespace == namespace {
+            aggregateMetrics = append(aggregateMetrics, aggMetric)
+           }
+    }
+
 	if err != nil {
 		context.Errorf("aggregateMore failed to readAggregates on board: %s, %v", boardKeyString, err)
 		return
 	}
 	if len(aggregateMetrics) == 0 {
+        context.Infof("zero length metrics")
 		return
 	}
 
@@ -296,6 +307,7 @@ var digestPostQueue = delay.Func("key", func(context appengine.Context, postKeyS
     aggMetricsBatch := AggregateMetricBatch{}
     for _, item := range aggBatch {
         aggregateSecond(context, item.TimeStamp, item.BoardKey, item.Namespace, &aggMetricsBatch)
+
     }
 
     keys, metrics := aggMetricsBatch.GetMetrics()

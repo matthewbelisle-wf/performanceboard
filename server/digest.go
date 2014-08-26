@@ -9,6 +9,8 @@ import (
 	"time"
 )
 
+const BATCH_BLOCK_SIZE = 100
+
 // data package parsing structure, not stored to disk.
 type PostBody struct {
 	Namespace string                 `json:"namespace"`
@@ -256,8 +258,8 @@ func digestPost(context appengine.Context, postKeyString string) *AggregationBat
 
         // write this metric and its children to datastore
 		keys, metrics := putBatch.GetMetrics()
-        for i := 0; i < len(keys); i = i + 100 {
-            stopIdx := i + 100
+        for i := 0; i < len(keys); i = i + BATCH_BLOCK_SIZE {
+            stopIdx := i + BATCH_BLOCK_SIZE
             if stopIdx > len(keys) {
                 stopIdx = len(keys)
             }
@@ -297,8 +299,9 @@ var digestPostQueue = delay.Func("key", func(context appengine.Context, postKeyS
     }
 
     keys, metrics := aggMetricsBatch.GetMetrics()
-    for i := 0; i < len(keys); i = i + 100 {
-        stopIdx := i + 100
+    context.Infof("aggregation record count: %d", len(keys))
+    for i := 0; i < len(keys); i = i + BATCH_BLOCK_SIZE {
+        stopIdx := i + BATCH_BLOCK_SIZE
         if stopIdx > len(keys) {
             stopIdx = len(keys)
         }

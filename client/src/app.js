@@ -2,6 +2,7 @@ var NAME = 'performanceboard';
 module.exports = NAME;
 
 require('angular-route'); // Just needs included once
+require('bootstrap');
 var angular = require('angular');
 var fs = require('fs');
 

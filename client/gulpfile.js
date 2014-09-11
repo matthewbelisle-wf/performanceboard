@@ -7,6 +7,8 @@ var source = require('vinyl-source-stream');
 var streamify = require('gulp-streamify');
 var uglify = require('gulp-uglify');
 
+var BUILD_DIR = '../app/static';
+
 gulp.task('jshint', function() {
     gulp.src(['./gulpfile.js',
               './src/**/*.js'])
@@ -14,18 +16,23 @@ gulp.task('jshint', function() {
         .pipe(jshint.reporter('default'));
 });
 
+gulp.task('build-copy', function() {
+    return gulp.src([
+        // TODO: bootstrap
+        './img/**/*'
+    ], {base: '.'})
+        .pipe(gulp.dest(BUILD_DIR));
+});
+
 gulp.task('build-js', function() {
     browserify({
-        entries: [
-            './index.js',
-            './node_modules/bootstrap/dist/js/bootstrap.js'
-        ],
+        entries: './src/main.js',
         debug: true
     })
         .bundle()
         .pipe(source('build.js'))
         // .pipe(streamify(uglify())) // TODO: Figure out why this breaks
-        .pipe(gulp.dest('.'));
+        .pipe(gulp.dest(BUILD_DIR));
 });
 
 gulp.task('build-css', function() {
@@ -34,9 +41,9 @@ gulp.task('build-css', function() {
             './node_modules/rickshaw/rickshaw.css',
             './src/**/*.css'
         ])
-        .pipe(minifyCSS({root: '.'}))
+        .pipe(minifyCSS({root: BUILD_DIR}))
         .pipe(concat('build.css'))
-        .pipe(gulp.dest('.'));
+        .pipe(gulp.dest(BUILD_DIR));
 });
 
 gulp.task('watch', function() {
@@ -46,5 +53,6 @@ gulp.task('watch', function() {
 gulp.task('default', [
     'jshint',
     'build-js',
-    'build-css'
+    'build-css',
+    'build-copy'
 ]);

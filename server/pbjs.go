@@ -1,4 +1,4 @@
-package performanceboard
+package server
 
 import (
 	"github.com/gorilla/mux"

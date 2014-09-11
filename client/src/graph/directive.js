@@ -1,10 +1,12 @@
 var $ = require('jquery');
+var jqueryUI = require('jquery-ui');
 var Rickshaw = require('rickshaw');
 var angular = require('angular');
 var fs = require('fs');
 
 var directive = function(
-    $http
+    $http,
+    slider
 ) {
     var initGraph = function(index, data) {
         var palette = new Rickshaw.Color.Palette();
@@ -66,7 +68,7 @@ var directive = function(
             tickFormat: function(pos) {
                 // return (new Date(pos * 1000)).toGMTString();
                 return (new Date(xLabels[pos])).toGMTString();
-            },            
+            },
             tickRotation: 90,
             tickOffsetX: -10,
         });
@@ -77,6 +79,36 @@ var directive = function(
         });
 
         graph.render();
+
+        var domain = graph.dataDomain();
+        var slider = $('#x-axis-slider').slider({
+            range: true,
+            min: domain[0],
+            max: domain[1],
+            values: [
+                domain[0],
+                domain[1]
+            ],
+            slide: function(event, ui) {
+                if (ui.values[1] <= ui.values[0]) return;
+
+                graph.window.xMin = ui.values[0];
+                graph.window.xMax = ui.values[1];
+                graph.update();
+
+                var domain = graph.dataDomain();
+
+                // if we're at an extreme, stick there
+                if (domain[0] == ui.values[0]) {
+                    graph.window.xMin = undefined;
+                }
+                if (domain[1] == ui.values[1]) {
+                    graph.window.xMax = undefined;
+                }
+            }
+        });
+
+        slider.css('width', graph.width + 'px')
     };
 
     return {
@@ -93,7 +125,7 @@ var directive = function(
     };
 };
 directive.$inject = [
-    '$http'
+    '$http',
 ];
 
 module.exports = directive;

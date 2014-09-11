@@ -85,13 +85,14 @@ Dev Server
 Serve the app locally from the root directory.
 
 ```
-$ go get ./server/
+$ goapp get github.com/mgbelisle/performanceboard/app
+$ cd $GOPATH/src/github.com/mgbelisle/performanceboard
 ```
 
 Ignore the errors about [unrecognized import paths for appengine](http://stackoverflow.com/questions/22674307/go-get-package-appengine-unrecognized-import-path-appengine).
 
 ```
-$ goapp serve .
+$ goapp serve ./app
 ```
 
 https://developers.google.com/appengine/docs/go/tools/devserver
@@ -102,7 +103,7 @@ Deploy
 Deploy the app to GAE from the root directory.
 
 ```
-$ goapp deploy .
+$ goapp deploy ./app
 ```
 
 https://developers.google.com/appengine/docs/go/tools/uploadinganapp

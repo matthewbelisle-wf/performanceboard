@@ -6,7 +6,7 @@
 // Data CREATEs require no authorization (createBoard, createPost, etc.)
 // Data READs require authorization if the users.yaml file is populated
 
-package performanceboard
+package server
 
 import (
 	"appengine"

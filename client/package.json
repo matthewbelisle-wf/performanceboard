@@ -8,7 +8,8 @@
     "bootstrap": "~3.2.0",
     "brfs": "~1.2.0",
     "browserify": "~5.10.0",
-    "d3":"~3.4.11",
+    "browserify-shim": "~3.7.0",
+    "d3": "~3.4.11",
     "gulp": "~3.8.6",
     "gulp-concat": "^2.2.0",
     "gulp-jshint": "~1.8.4",
@@ -28,9 +29,18 @@
     "url": "https://github.com/mgbelisle/performanceboard/issues"
   },
   "homepage": "http://performanceboard-public.appspot.com/",
+  "browser": {
+    "bootstrap": "./node_modules/bootstrap/dist/js/bootstrap.js"
+  },
   "browserify": {
     "transform": [
+      "browserify-shim",
       "brfs"
     ]
+  },
+  "browserify-shim": {
+    "bootstrap":  {
+      "depends": ["jquery:jQuery"]
+    }
   }
 }

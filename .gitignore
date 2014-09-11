@@ -1,3 +1,2 @@
-bower_components
-client/static/build.*
-node_modules
+client/node_modules
+app/static

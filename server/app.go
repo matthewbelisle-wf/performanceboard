@@ -5,7 +5,7 @@
 // Update = PUT
 // Delete = DELETE
 
-package performanceboard
+package server
 
 import (
 	"github.com/gorilla/mux"
@@ -15,7 +15,7 @@ import (
 
 var router *mux.Router
 
-func init() {
+func Init() {
 	router = mux.NewRouter()
 	router.HandleFunc("/api/post/{post_key}", getPost).Methods("GET").Name("get_post")
 	router.HandleFunc("/api/post", methodNotAllowed)
@@ -35,7 +35,7 @@ func init() {
 	http.Handle("/", router)
 }
 
-var indexHtml, _ = ioutil.ReadFile("server/templates/index.html")
+var indexHtml, _ = ioutil.ReadFile("index.html")
 
 func client(writer http.ResponseWriter, request *http.Request) {
 	if !Authorized(writer, request) {

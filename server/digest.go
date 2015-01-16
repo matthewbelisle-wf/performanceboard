@@ -126,7 +126,7 @@ func aggregateSecond(context appengine.Context, t time.Time, boardKeyString stri
 	}
 	// trim fractional second to bin aggregate computation
 	truncTime := t.Truncate(1 * time.Second)
-	metrics, _, err := readMetrics(context, boardKey, namespace, truncTime, 1*time.Second, 0, -1, "")
+	metrics, _, err := readMetrics(context, boardKeyString, namespace, truncTime, 1*time.Second, 0, -1, "")
 	count := len(metrics)
 	if count == 0 {
 		return
@@ -264,9 +264,8 @@ var digestPost = delay.Func("key", func(c appengine.Context, postKeyString strin
 	}
 
 	// enter the recursive storage routine
-	boardKeyString := postKey.Parent().Encode()
-	if namespace, err := storeMetric(c, boardKeyString, postKeyString, body, nil); err == nil {
-		storeTaxonomy(c, boardKeyString, "", namespace)
+	if namespace, err := storeMetric(c, post.BoardKey, postKeyString, body, nil); err == nil {
+		storeTaxonomy(c, post.BoardKey, "", namespace)
 	} else {
 		c.Errorf("Error storing Taxonomy:%v", err)
 	}

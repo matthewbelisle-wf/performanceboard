@@ -10,17 +10,9 @@ indexes:
 # automatically uploaded to the admin console when you next deploy
 # your application using appcfg.py.
 
-- kind: AggregateMetric
-  ancestor: yes
-  properties:
-  - name: BinType
-  - name: Namespace
-  - name: StartTime
-    direction: desc
-
 - kind: Metric
-  ancestor: yes
   properties:
+  - name: BoardKey
   - name: Namespace
   - name: Start
     direction: desc

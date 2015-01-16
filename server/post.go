@@ -12,6 +12,7 @@ const PostKind = "Post"
 
 type Post struct {
 	Key       *datastore.Key `datastore:"-"`
+	BoardKey  string         `datastore:",index"`
 	Body      string         `datastore:",noindex"`
 	Timestamp time.Time      `datastore:",noindex"`
 }

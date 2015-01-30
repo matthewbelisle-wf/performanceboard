@@ -25,10 +25,10 @@ func init() {
 	router.HandleFunc("/api/{board}/{namespace}", methodNotAllowed)
 	router.HandleFunc("/api/{board}", getNamespaces).Methods("GET").Name("board")
 	router.HandleFunc("/api/{board}", postMetric).Methods("POST")
-	router.HandleFunc("/api/{board}", clearBoard).Methods("PUT")
+	router.HandleFunc("/api/{board}", handleClearBoard).Methods("PUT")
 	router.HandleFunc("/api/{board}", methodNotAllowed)
-	router.HandleFunc("/api/", createBoard).Methods("POST")
-	router.HandleFunc("/api/", listBoards).Methods("GET")
+	router.HandleFunc("/api/", handleCreateBoard).Methods("POST")
+	router.HandleFunc("/api/", handleListBoards).Methods("GET")
 	router.HandleFunc("/api/", methodNotAllowed)
 	router.HandleFunc("/pbjs/{board}", servePBJS).Methods("GET")
 	router.HandleFunc("/{client:.*}", client).Name("client")
@@ -47,4 +47,19 @@ func client(writer http.ResponseWriter, request *http.Request) {
 
 func methodNotAllowed(writer http.ResponseWriter, request *http.Request) {
 	http.Error(writer, http.StatusText(http.StatusMethodNotAllowed), http.StatusMethodNotAllowed)
+}
+
+func handleCreateBoard(writer http.ResponseWriter, request *http.Request) {
+	context := appengine.NewContext(request)
+	createBoard(context, writer, request)
+}
+
+func handleListBoards(writer http.ResponseWriter, request *http.Request) {
+	context := appengine.NewContext(request)
+	listBoards(context, writer, request)
+}
+
+func handleClearBoard(w http.ResponseWriter, r *http.Request) {
+	c := appengine.NewContext(r)
+	clearBoard(c, w, r)
 }

@@ -5,6 +5,7 @@ import (
 	"appengine/datastore"
 	"appengine/user"
 	"github.com/gorilla/mux"
+	"log"
 	"net/http"
 )
 
@@ -12,6 +13,7 @@ const BoardKind = "Board"
 
 type Board struct {
 	Key    *datastore.Key `datastore:"-"`
+	Name   string
 	UserID string
 }
 
@@ -23,27 +25,27 @@ func (board *Board) ServeHTTP(writer http.ResponseWriter, request *http.Request)
 	}.Write(writer)
 }
 
-// HTTP handlers
-
-func createBoard(writer http.ResponseWriter, request *http.Request) {
-	context := appengine.NewContext(request)
+func createBoard(context appengine.Context, writer http.ResponseWriter, request *http.Request) {
+	boardName := request.FormValue("name")
 	board := Board{}
 	if u := user.Current(context); u != nil {
 		board.UserID = u.ID
+		board.Name = boardName
 	}
 	board.Key, _ = datastore.Put(context, datastore.NewIncompleteKey(context, BoardKind, nil), &board)
 	board.ServeHTTP(writer, request)
 }
 
-func listBoards(writer http.ResponseWriter, request *http.Request) {
-	context := appengine.NewContext(request)
+func listBoards(context appengine.Context, writer http.ResponseWriter, request *http.Request) {
 	q := datastore.NewQuery(BoardKind).KeysOnly()
 	if keys, err := q.GetAll(context, nil); err != nil {
 		http.Error(writer, err.Error(), http.StatusInternalServerError)
 	} else {
 		keyList := []JsonResponse{}
+		log.Println("keylist:", keyList)
 		for _, key := range keys {
 			api, _ := router.Get("client").URL("client", key.Encode())
+			log.Println("api:", api)
 
 			keyList = append(keyList, JsonResponse{
 				"name": "BOARD",
@@ -56,14 +58,14 @@ func listBoards(writer http.ResponseWriter, request *http.Request) {
 	}
 }
 
-func clearBoard(w http.ResponseWriter, r *http.Request) {
+func clearBoard(c appengine.Context, w http.ResponseWriter, r *http.Request) {
 	keyString := mux.Vars(r)["board"]
 	key, err := datastore.DecodeKey(keyString)
 	if err != nil || key.Kind() != BoardKind {
 		http.Error(w, "Invalid board key: "+keyString, http.StatusBadRequest)
 		return
 	}
-	c := appengine.NewContext(r)
+
 	board := Board{Key: key}
 	if err = datastore.Get(c, key, &board); err != nil {
 		http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)

@@ -5,7 +5,6 @@ import (
 	"appengine/aetest"
 	"appengine/datastore"
 	"encoding/json"
-	// "io/ioutil"
 	"log"
 	"net/http"
 	"net/http/httptest"
@@ -19,7 +18,6 @@ type BoardResult struct {
 }
 
 func createTestBoard(c appengine.Context) (*httptest.ResponseRecorder, error) {
-
 	w := httptest.NewRecorder()
 	req, err := http.NewRequest("POST", "http://test.test/api/", nil)
 	if err != nil {
@@ -86,5 +84,5 @@ func TestListBoard(t *testing.T) {
 }
 
 func TestClearBoard(t *testing.T) {
-
+	t.Fatal()
 }

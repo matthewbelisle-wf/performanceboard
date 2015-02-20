@@ -5,7 +5,6 @@ import (
 	"appengine/aetest"
 	"appengine/datastore"
 	"encoding/json"
-	"log"
 	"net/http/httptest"
 	"strings"
 	"testing"
@@ -24,13 +23,13 @@ func createTestBoard(inst aetest.Instance) (*httptest.ResponseRecorder, error) {
 		return nil, err
 	}
 
-	context := appengine.NewContext(req)
-
-	createBoard(context, w, req)
+	handleCreateBoard(w, req)
 
 	// this block has a side effect of pushing data to disk
 	var result BoardResult
 	json.Unmarshal([]byte(w.Body.String()), &result)
+
+	context := appengine.NewContext(req)
 	fetchBoard(context, result.Board)
 
 	return w, nil
@@ -81,9 +80,8 @@ func TestListBoard(t *testing.T) {
 	}
 
 	// make call
-	c := appengine.NewContext(req)
 	w := httptest.NewRecorder()
-	listBoards(c, w, req)
+	handleListBoards(w, req)
 
 	// define expected result structure
 	type BoardResultResponse struct {
@@ -99,5 +97,7 @@ func TestListBoard(t *testing.T) {
 }
 
 func TestClearBoard(t *testing.T) {
+	// TODO test setup requires posting Metrics to a Board (with Aggregation side-effects)
+	// TODO test that clearing board Removes All The Things
 	t.Fatal()
 }

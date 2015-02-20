@@ -9,57 +9,6 @@ import (
 	"time"
 )
 
-// data package parsing structure, not stored to disk.
-type PostBody struct {
-	Namespace string                 `json:"namespace"`
-	Start     time.Time              `json:"start"`
-	End       time.Time              `json:"end"`
-	Meta      map[string]interface{} `json:"meta"`
-	Children  []PostBody             `json:"children"`
-}
-
-// A Metric is a namespaced measurement. A metric's parent (for Ancestor queries)
-// is the metric that contained it in the origional Post. Therefore, a Metric
-// with the namespace 'X.Y.Z' will have an Ancestor Metric with a namespace
-// of 'X.Y'.
-const MetricKind = "Metric"
-
-type Metric struct {
-	Key       *datastore.Key `datastore:"-"`
-	Namespace string         // dot seperated name hierarchy
-	Meta      string         `datastore:",noindex"` // stringified JSON object
-	Start     time.Time      // UTC
-	End       time.Time      // UTC
-	Children  []Metric       `datastore:"-"`
-}
-
-// The Taxonomy table defines namespace relationships for fast lookup
-// Given static assignment of a namespace to a measurement on the client
-// this table should not continue to grow in size for repeated Posts.
-const TaxonomyKind = "Taxonomy"
-
-type Taxonomy struct {
-	Key        *datastore.Key `datastore:"-"`
-	BoardKey   string         // board this taxonomy is a member of
-	Namespace  string         // parent namespace, empty string for top-level namespaces
-	Childspace string         // a single child namespace of Namespace field
-}
-
-const AggregateMetricKind = "AggregateMetric"
-
-type AggregateMetric struct {
-	Key       *datastore.Key `datastore:"-"`
-	BoardKey  string
-	Namespace string
-	StartTime time.Time
-	BinType   string // second, minute, hour, day
-	Min       float64
-	Max       float64
-	Mean      float64
-	Sum       int64
-	Count     int64
-}
-
 func storeTaxonomy(context appengine.Context, boardKey string, parentNamespace string, childNamespace string) {
 	taxonomy := Taxonomy{}
 	keyID := fmt.Sprintf("%s:%s:%s", boardKey, parentNamespace, childNamespace)

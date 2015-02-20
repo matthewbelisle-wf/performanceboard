@@ -9,14 +9,6 @@ import (
 	"net/http"
 )
 
-const BoardKind = "Board"
-
-type Board struct {
-	Key    *datastore.Key `datastore:"-"`
-	Name   string
-	UserID string
-}
-
 func (board *Board) ServeHTTP(writer http.ResponseWriter, request *http.Request) {
 	api, _ := router.Get("board").URL("board", board.Key.Encode())
 	JsonResponse{
@@ -25,7 +17,8 @@ func (board *Board) ServeHTTP(writer http.ResponseWriter, request *http.Request)
 	}.Write(writer)
 }
 
-func createBoard(context appengine.Context, writer http.ResponseWriter, request *http.Request) {
+func handleCreateBoard(writer http.ResponseWriter, request *http.Request) {
+	context := appengine.NewContext(request)
 	boardName := request.FormValue("name")
 	board := Board{}
 	if u := user.Current(context); u != nil {
@@ -36,7 +29,8 @@ func createBoard(context appengine.Context, writer http.ResponseWriter, request 
 	board.ServeHTTP(writer, request)
 }
 
-func listBoards(context appengine.Context, writer http.ResponseWriter, request *http.Request) {
+func handleListBoards(writer http.ResponseWriter, request *http.Request) {
+	context := appengine.NewContext(request)
 	q := datastore.NewQuery(BoardKind).KeysOnly()
 	if keys, err := q.GetAll(context, nil); err != nil {
 		http.Error(writer, err.Error(), http.StatusInternalServerError)
@@ -58,7 +52,8 @@ func listBoards(context appengine.Context, writer http.ResponseWriter, request *
 	}
 }
 
-func clearBoard(c appengine.Context, w http.ResponseWriter, r *http.Request) {
+func handleClearBoard(w http.ResponseWriter, r *http.Request) {
+	c := appengine.NewContext(r)
 	keyString := mux.Vars(r)["board"]
 	key, err := datastore.DecodeKey(keyString)
 	if err != nil || key.Kind() != BoardKind {

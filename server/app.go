@@ -8,7 +8,6 @@
 package performanceboard
 
 import (
-	"appengine"
 	"github.com/gorilla/mux"
 	"io/ioutil"
 	"net/http"
@@ -48,19 +47,4 @@ func client(writer http.ResponseWriter, request *http.Request) {
 
 func methodNotAllowed(writer http.ResponseWriter, request *http.Request) {
 	http.Error(writer, http.StatusText(http.StatusMethodNotAllowed), http.StatusMethodNotAllowed)
-}
-
-func handleCreateBoard(writer http.ResponseWriter, request *http.Request) {
-	context := appengine.NewContext(request)
-	createBoard(context, writer, request)
-}
-
-func handleListBoards(writer http.ResponseWriter, request *http.Request) {
-	context := appengine.NewContext(request)
-	listBoards(context, writer, request)
-}
-
-func handleClearBoard(w http.ResponseWriter, r *http.Request) {
-	c := appengine.NewContext(r)
-	clearBoard(c, w, r)
 }

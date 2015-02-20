@@ -6,7 +6,6 @@ import (
 	"appengine/datastore"
 	"encoding/json"
 	"log"
-	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
@@ -17,18 +16,22 @@ type BoardResult struct {
 	Board string `json:"board"`
 }
 
-func createTestBoard(c appengine.Context) (*httptest.ResponseRecorder, error) {
+func createTestBoard(inst aetest.Instance) (*httptest.ResponseRecorder, error) {
 	w := httptest.NewRecorder()
-	req, err := http.NewRequest("POST", "http://test.test/api/", nil)
+
+	req, err := inst.NewRequest("POST", "http://test.test/api/", nil)
 	if err != nil {
 		return nil, err
 	}
-	createBoard(c, w, req)
+
+	context := appengine.NewContext(req)
+
+	createBoard(context, w, req)
 
 	// this block has a side effect of pushing data to disk
 	var result BoardResult
 	json.Unmarshal([]byte(w.Body.String()), &result)
-	fetchBoard(c, result.Board)
+	fetchBoard(context, result.Board)
 
 	return w, nil
 }
@@ -43,8 +46,10 @@ func fetchBoard(c appengine.Context, boardKey string) (*Board, error) {
 }
 
 func TestCreateBoard(t *testing.T) {
-	c, _ := aetest.NewContext(nil)
-	w, _ := createTestBoard(c)
+	inst, _ := aetest.NewInstance(&aetest.Options{StronglyConsistentDatastore: true})
+	defer inst.Close()
+
+	w, _ := createTestBoard(inst)
 
 	if w.Code != 200 {
 		t.Fatal("Expected code 200, recieved", w.Code)
@@ -62,24 +67,34 @@ func TestCreateBoard(t *testing.T) {
 }
 
 func TestListBoard(t *testing.T) {
-	c, _ := aetest.NewContext(nil)
-	createTestBoard(c)
-	createTestBoard(c)
+	inst, err := aetest.NewInstance(&aetest.Options{StronglyConsistentDatastore: true})
+	defer inst.Close()
 
-	w := httptest.NewRecorder()
-	req, err := http.NewRequest("GET", "http://test.test/api/", nil)
+	// setup preconditions
+	createTestBoard(inst)
+	createTestBoard(inst)
+
+	// define call under test
+	req, err := inst.NewRequest("GET", "http://test.test/api/", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
 
+	// make call
+	c := appengine.NewContext(req)
+	w := httptest.NewRecorder()
 	listBoards(c, w, req)
-	t.Log(w.Body.String())
 
-	var results []BoardResult
+	// define expected result structure
+	type BoardResultResponse struct {
+		Results []BoardResult `json:"results"`
+	}
+	var results BoardResultResponse
 	err = json.Unmarshal([]byte(w.Body.String()), &results)
-	log.Println(results)
-	if len(results) != 2 {
-		t.Fatal("expected 2 board result")
+
+	// make assertions
+	if len(results.Results) != 2 {
+		t.Fatal("expected 2 board result, got ", len(results.Results))
 	}
 }
 

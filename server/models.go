@@ -42,6 +42,8 @@ const MetricKind = "Metric"
 
 type Metric struct {
 	Key       *datastore.Key `datastore:"-"`
+	BoardKey  string         // top-level membership
+	ParentKey string         // key of enclosing Metric
 	Namespace string         // dot seperated name hierarchy
 	Meta      string         `datastore:",noindex"` // stringified JSON object
 	Start     time.Time      // UTC

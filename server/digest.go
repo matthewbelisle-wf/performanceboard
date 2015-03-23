@@ -6,6 +6,7 @@ import (
 	"appengine/delay"
 	"encoding/json"
 	"fmt"
+	"log"
 	"time"
 )
 
@@ -22,11 +23,11 @@ func storeTaxonomy(context appengine.Context, boardKey string, parentNamespace s
 }
 
 // decompose a raw Post event into its hierarchical namespaces and write the Metrics to disk
-func storeMetric(context appengine.Context, boardKeyString string, postKey string, data PostBody, ancestor *Metric) (string, error) {
+func storeMetric(context appengine.Context, boardKeyString string, postKey string, data PostBody, parent *Metric) (string, error) {
 	metric := Metric{}
 	metric.Namespace = data.Namespace
-	if ancestor != nil {
-		metric.Namespace = fmt.Sprintf("%s.%s", ancestor.Namespace, metric.Namespace)
+	if parent != nil {
+		metric.Namespace = fmt.Sprintf("%s.%s", parent.Namespace, metric.Namespace)
 	}
 	metadata := ""
 	if len(data.Meta) > 0 {
@@ -37,17 +38,17 @@ func storeMetric(context appengine.Context, boardKeyString string, postKey strin
 	metric.Meta = metadata
 	metric.Start = data.Start
 	metric.End = data.End
+	metric.BoardKey = boardKeyString
+	if parent != nil {
+		metric.ParentKey = parent.Key.Encode()
+	}
 
 	// compose an idempotent key for this data (allows Post data to be digested repeatedly)
 	keyID := fmt.Sprintf("%s:%s:%v:%v", postKey, metric.Namespace, data.Start, data.End)
-	if ancestor == nil {
-		boardKey, _ := datastore.DecodeKey(boardKeyString)
-		metric.Key = datastore.NewKey(context, MetricKind, keyID, 0, boardKey)
-	} else {
-		metric.Key = datastore.NewKey(context, MetricKind, keyID, 0, ancestor.Key)
-	}
+	metric.Key = datastore.NewKey(context, MetricKind, keyID, 0, nil)
 	_, err := datastore.Put(context, metric.Key, &metric)
 	if err != nil {
+		log.Println("Error on Metric Put:", err)
 		context.Errorf("Error on Metric Put:%v", err)
 		return "", err
 	}
@@ -60,8 +61,9 @@ func storeMetric(context appengine.Context, boardKeyString string, postKey strin
 		}
 	}
 
+	// TODO restore aggregation when it is qualified with tests
 	// TODO optimize how often the aggregate chain is called to once per namespace per post
-	aggregateSecond(context, metric.Start, boardKeyString, metric.Namespace)
+	//aggregateSecond(context, metric.Start, boardKeyString, metric.Namespace)
 
 	return metric.Namespace, nil
 }
@@ -199,8 +201,7 @@ func aggregateMore(context appengine.Context, t time.Time, boardKeyString string
 
 }
 
-// This is the entry point into the deferred context of input digestion
-var digestPost = delay.Func("key", func(c appengine.Context, postKeyString string) {
+func digestPost(c appengine.Context, postKeyString string) {
 	post := Post{}
 	postKey, _ := datastore.DecodeKey(postKeyString)
 	if err := datastore.Get(c, postKey, &post); err != nil {
@@ -218,4 +219,7 @@ var digestPost = delay.Func("key", func(c appengine.Context, postKeyString strin
 	} else {
 		c.Errorf("Error storing Taxonomy:%v", err)
 	}
-})
+}
+
+// This is the entry point into the deferred context of input digestion
+var delayedDigestPost = delay.Func("key", digestPost)

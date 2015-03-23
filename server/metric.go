@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"strconv"
 	"time"
+	"log"
 )
 
 const DEFAULT_LIMIT = 100
@@ -198,8 +199,10 @@ func getMetrics(writer http.ResponseWriter, request *http.Request) {
 	response.Write(writer)
 }
 
-// TODO memcache the board entity and validate boardKey against it
-func postMetric(writer http.ResponseWriter, request *http.Request) {
+// Posting metrics is expected to be a frequent task. this handler is expected
+// to extract the body of the post and store it to datastore without inspection.
+// TODO:: can this function be made to return faster?
+func handlePostMetric(writer http.ResponseWriter, request *http.Request) {
 	writer.Header().Add("Access-Control-Allow-Origin", "*")
 	writer.Header().Add("Access-Control-Allow-Methods", "OPTIONS, POST")
 	writer.Header().Add("Access-Control-Allow-Headers", "Content-Type")
@@ -208,15 +211,21 @@ func postMetric(writer http.ResponseWriter, request *http.Request) {
 	encodedBoardKey := mux.Vars(request)["board"]
 	boardKey, err := datastore.DecodeKey(encodedBoardKey)
 	if err != nil || boardKey.Kind() != BoardKind {
+		// TODO memcache the board entity and validate boardKey against it for user ownership
+		log.Println("invalid board key:"+encodedBoardKey, err)
 		http.Error(writer, "Invalid Board key: "+encodedBoardKey, http.StatusBadRequest)
 		return
 	}
-	defer request.Body.Close()
+
 	body, err := ioutil.ReadAll(request.Body)
 	if err != nil {
+		log.Println("request error", err)
 		http.Error(writer, err.Error(), http.StatusBadRequest)
 		return
 	}
+	defer request.Body.Close()
+
+	// a Post object captures the Metrics-tree and stores it as a single entity
 	post := Post{
 		Body:      string(body),
 		BoardKey:  encodedBoardKey,
@@ -225,8 +234,13 @@ func postMetric(writer http.ResponseWriter, request *http.Request) {
 	context := appengine.NewContext(request)
 	post.Key, err = datastore.Put(context, datastore.NewIncompleteKey(context, PostKind, nil), &post)
 	if err != nil {
+		log.Println("error on Put", err)
 		http.Error(writer, err.Error(), http.StatusBadRequest)
 		return
 	}
-	digestPost.Call(context, post.Key.Encode())
+
+	// TODO use delayedDigestPost when digestPost is qualified
+	// decompose the metrics-tree into indevidual metrics, and aggregate them
+	//delayedDigestPost.Call(context, post.Key.Encode())
+	digestPost(context, post.Key.Encode())
 }

@@ -61,9 +61,8 @@ func storeMetric(context appengine.Context, boardKeyString string, postKey strin
 		}
 	}
 
-	// TODO restore aggregation when it is qualified with tests
 	// TODO optimize how often the aggregate chain is called to once per namespace per post
-	// aggregateSecond(context, metric.Start, boardKeyString, metric.Namespace)
+	aggregateSecond(context, metric.Start, boardKeyString, metric.Namespace)
 
 	return metric.Namespace, nil
 }
@@ -126,7 +125,6 @@ func aggregateSecond(context appengine.Context, t time.Time, boardKeyString stri
 
 func aggregateMore(context appengine.Context, t time.Time, boardKeyString string, namespace string, binType string) {
 	// Read the AggregateMetric table for a one-minute interval
-	boardKey, _ := datastore.DecodeKey(boardKeyString)
 	var aggregateBinType string
 	aggregateDuration := time.Minute
 	switch binType {
@@ -146,7 +144,7 @@ func aggregateMore(context appengine.Context, t time.Time, boardKeyString string
 
 	// readAggregates reads time backwards, so we jump time forward to read our duration
 	aggregateMetrics, _, err := readAggregates(
-		context, boardKey, namespace, aggregateBinType,
+		context, boardKeyString, namespace, aggregateBinType,
 		truncTime.Add(aggregateDuration), aggregateDuration, -1, "")
 
 	if err != nil {
@@ -175,7 +173,7 @@ func aggregateMore(context appengine.Context, t time.Time, boardKeyString string
 
 	// store values to AggregateMetric entity
 	keyID := fmt.Sprintf("%s:%s:%v:%s", boardKeyString, namespace, truncTime, binType)
-	key := datastore.NewKey(context, AggregateMetricKind, keyID, 0, boardKey)
+	key := datastore.NewKey(context, AggregateMetricKind, keyID, 0, nil)
 	aggMetric := AggregateMetric{
 		Key:       key,
 		BoardKey:  boardKeyString,

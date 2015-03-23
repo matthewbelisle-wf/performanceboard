@@ -78,5 +78,24 @@ func TestPostMetric(t *testing.T) {
 		t.Fatal("non-empty cursor recieved")
 	}
 
-	// TODO query for aggregate data
+	// query for aggregate data
+	aggMetrics, cursor, err := readAggregates(context,
+		boardKeyString,
+		"test",
+		"second",
+		postBody.End,
+		3*time.Second,
+		100,
+		"")
+
+	// make assertions!
+	if len(aggMetrics) < 1 {
+		t.Fatal("no aggregregate metrics found")
+	}
+	if aggMetrics[0].Namespace != "test" {
+		t.Fatal("unexpected Namespace", aggMetrics[0].Namespace)
+	}
+	if cursor != "" {
+		t.Fatal("unexpected cursor from readAggregates")
+	}
 }

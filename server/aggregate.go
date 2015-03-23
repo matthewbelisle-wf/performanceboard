@@ -78,7 +78,7 @@ func readAggregates(context appengine.Context,
 // HTTP handlers
 
 func getAggregates(writer http.ResponseWriter, request *http.Request) {
-	
+
 	log.Println("readAggregates request:", request)
 
 	context := appengine.NewContext(request)

@@ -41,28 +41,30 @@ func TestPostMetric(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// make call
+	// make the call
 	w := httptest.NewRecorder()
 	r := initRouter() // enables parsing route parameters
 	r.ServeHTTP(w, req)
 
-
+	// cheat creating the query time parsing it from the test data
 	postBody := PostBody{}
 	if err := json.Unmarshal([]byte(body), &postBody); err != nil {
 		t.Fatal(err)
 	}
 
-	// assert the call created an entity
+	// query for data
 	context := appengine.NewContext(req)
 	metrics, cursor, err := readMetrics(
 		context,
 		boardKeyString,
 		"test",        // namespace
 		postBody.End,  // newestTime (rev chron order)
-		3 * time.Second, // duration
+		3*time.Second, // duration
 		0,             // depth
 		100,           // limit
 		"")            // cursor
+
+	// make assertions!
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -75,4 +77,6 @@ func TestPostMetric(t *testing.T) {
 	if cursor != "" {
 		t.Fatal("non-empty cursor recieved")
 	}
+
+	// TODO query for aggregate data
 }

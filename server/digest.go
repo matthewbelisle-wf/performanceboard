@@ -63,7 +63,7 @@ func storeMetric(context appengine.Context, boardKeyString string, postKey strin
 
 	// TODO restore aggregation when it is qualified with tests
 	// TODO optimize how often the aggregate chain is called to once per namespace per post
-	//aggregateSecond(context, metric.Start, boardKeyString, metric.Namespace)
+	// aggregateSecond(context, metric.Start, boardKeyString, metric.Namespace)
 
 	return metric.Namespace, nil
 }
@@ -80,6 +80,7 @@ func aggregateSecond(context appengine.Context, t time.Time, boardKeyString stri
 	metrics, _, err := readMetrics(context, boardKeyString, namespace, truncTime, 1*time.Second, 0, -1, "")
 	count := len(metrics)
 	if count == 0 {
+		log.Println("no data to aggregate")
 		return
 	}
 
@@ -115,6 +116,7 @@ func aggregateSecond(context appengine.Context, t time.Time, boardKeyString stri
 		Count:     int64(count),
 	}
 	if _, err := datastore.Put(context, aggMetric.Key, &aggMetric); err != nil {
+		log.Println("Error on Metric Put:%v", err)
 		context.Errorf("Error on Metric Put:%v", err)
 		return
 	}

@@ -36,7 +36,6 @@ func handleListBoards(writer http.ResponseWriter, request *http.Request) {
 		http.Error(writer, err.Error(), http.StatusInternalServerError)
 	} else {
 		keyList := []JsonResponse{}
-		log.Println("keylist:", keyList)
 		for _, key := range keys {
 			api, _ := router.Get("client").URL("client", key.Encode())
 			log.Println("api:", api)
@@ -67,7 +66,7 @@ func handleClearBoard(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	q := datastore.NewQuery(MetricKind).Ancestor(key).KeysOnly().Limit(2000)
+	q := datastore.NewQuery(MetricKind).Filter("BoardKey =", keyString).KeysOnly().Limit(2000)
 	for {
 		if keys, err := q.GetAll(c, nil); err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)

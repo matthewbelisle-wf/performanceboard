@@ -34,10 +34,9 @@ type Post struct {
 	Timestamp time.Time      `datastore:",noindex"`
 }
 
-// A Metric is a namespaced measurement. A metric's parent (for Ancestor queries)
-// is the metric that contained it in the origional Post. Therefore, a Metric
-// with the namespace 'X.Y.Z' will have an Ancestor Metric with a namespace
-// of 'X.Y'.
+// A Metric is a namespaced measurement. A metric's parent  is the metric
+// that contained it in the origional Post. Therefore, a Metric with the
+// namespace 'X.Y.Z' will have an Parent Metric with a namespace of 'X.Y'.
 const MetricKind = "Metric"
 
 type Metric struct {

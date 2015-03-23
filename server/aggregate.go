@@ -4,6 +4,7 @@ import (
 	"appengine"
 	"appengine/datastore"
 	"github.com/gorilla/mux"
+	"log"
 	"net/http"
 	"strconv"
 	"time"
@@ -32,11 +33,11 @@ func readAggregates(context appengine.Context,
 	// binTypes: "day", "hour", "minute", or "second"
 
 	q := datastore.NewQuery(AggregateMetricKind).
+		Filter("BoardKey =", boardKey).
 		Filter("Namespace =", namespace).
 		Filter("BinType =", binType).
 		Filter("StartTime <=", newestTime).
-		Order("-StartTime").
-		Ancestor(boardKey)
+		Order("-StartTime")
 
 	if duration > 0 {
 		oldestTime := newestTime.Add(-duration)
@@ -77,6 +78,9 @@ func readAggregates(context appengine.Context,
 // HTTP handlers
 
 func getAggregates(writer http.ResponseWriter, request *http.Request) {
+	
+	log.Println("readAggregates request:", request)
+
 	context := appengine.NewContext(request)
 	encodedKey := mux.Vars(request)["board"]
 	boardKey, err := datastore.DecodeKey(encodedKey)

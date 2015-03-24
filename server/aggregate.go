@@ -4,6 +4,7 @@ import (
 	"appengine"
 	"appengine/datastore"
 	"github.com/gorilla/mux"
+	"log"
 	"net/http"
 	"strconv"
 	"time"
@@ -24,7 +25,7 @@ func makeAggregateDtoList(metrics []AggregateMetric) []JsonResponse {
 }
 
 func readAggregates(context appengine.Context,
-	boardKey *datastore.Key, namespace string, binType string,
+	boardKeyString string, namespace string, binType string,
 	newestTime time.Time, duration time.Duration,
 	limit int, cursor string) ([]AggregateMetric, string, error) {
 	// newestTime: same as 'end'
@@ -32,11 +33,11 @@ func readAggregates(context appengine.Context,
 	// binTypes: "day", "hour", "minute", or "second"
 
 	q := datastore.NewQuery(AggregateMetricKind).
+		Filter("BoardKey =", boardKeyString).
 		Filter("Namespace =", namespace).
 		Filter("BinType =", binType).
 		Filter("StartTime <=", newestTime).
-		Order("-StartTime").
-		Ancestor(boardKey)
+		Order("-StartTime")
 
 	if duration > 0 {
 		oldestTime := newestTime.Add(-duration)
@@ -77,17 +78,16 @@ func readAggregates(context appengine.Context,
 // HTTP handlers
 
 func getAggregates(writer http.ResponseWriter, request *http.Request) {
+
+	log.Println("readAggregates request:", request)
+
 	context := appengine.NewContext(request)
 	encodedKey := mux.Vars(request)["board"]
-	boardKey, err := datastore.DecodeKey(encodedKey)
-	if err != nil {
-		http.Error(writer, err.Error(), http.StatusBadRequest)
-		return
-	}
 	namespace := mux.Vars(request)["namespace"]
 	binType := mux.Vars(request)["bin_type"] // day, hour, minute, second
 
 	end := time.Now()
+	err := error(nil)
 
 	// parse optional end time
 	if endParam := request.FormValue("end"); len(endParam) > 0 {
@@ -127,7 +127,7 @@ func getAggregates(writer http.ResponseWriter, request *http.Request) {
 	cursor := request.FormValue("cursor")
 
 	// read aggregates
-	aggregates, cursor, err := readAggregates(context, boardKey, namespace, binType, end, duration, limit, cursor)
+	aggregates, cursor, err := readAggregates(context, encodedKey, namespace, binType, end, duration, limit, cursor)
 	if err != nil {
 		http.Error(writer, err.Error(), http.StatusBadRequest)
 		return

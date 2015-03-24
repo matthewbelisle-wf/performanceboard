@@ -5,16 +5,7 @@ import (
 	"appengine/datastore"
 	"github.com/gorilla/mux"
 	"net/http"
-	"time"
 )
-
-const PostKind = "Post"
-
-type Post struct {
-	Key       *datastore.Key `datastore:"-"`
-	Body      string         `datastore:",noindex"`
-	Timestamp time.Time      `datastore:",noindex"`
-}
 
 func getPost(writer http.ResponseWriter, request *http.Request) {
 	context := appengine.NewContext(request)

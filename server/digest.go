@@ -6,59 +6,9 @@ import (
 	"appengine/delay"
 	"encoding/json"
 	"fmt"
+	"log"
 	"time"
 )
-
-// data package parsing structure, not stored to disk.
-type PostBody struct {
-	Namespace string                 `json:"namespace"`
-	Start     time.Time              `json:"start"`
-	End       time.Time              `json:"end"`
-	Meta      map[string]interface{} `json:"meta"`
-	Children  []PostBody             `json:"children"`
-}
-
-// A Metric is a namespaced measurement. A metric's parent (for Ancestor queries)
-// is the metric that contained it in the origional Post. Therefore, a Metric
-// with the namespace 'X.Y.Z' will have an Ancestor Metric with a namespace
-// of 'X.Y'.
-const MetricKind = "Metric"
-
-type Metric struct {
-	Key       *datastore.Key `datastore:"-"`
-	Namespace string         // dot seperated name hierarchy
-	Meta      string         `datastore:",noindex"` // stringified JSON object
-	Start     time.Time      // UTC
-	End       time.Time      // UTC
-	Children  []Metric       `datastore:"-"`
-}
-
-// The Taxonomy table defines namespace relationships for fast lookup
-// Given static assignment of a namespace to a measurement on the client
-// this table should not continue to grow in size for repeated Posts.
-const TaxonomyKind = "Taxonomy"
-
-type Taxonomy struct {
-	Key        *datastore.Key `datastore:"-"`
-	BoardKey   string         // board this taxonomy is a member of
-	Namespace  string         // parent namespace, empty string for top-level namespaces
-	Childspace string         // a single child namespace of Namespace field
-}
-
-const AggregateMetricKind = "AggregateMetric"
-
-type AggregateMetric struct {
-	Key       *datastore.Key `datastore:"-"`
-	BoardKey  string
-	Namespace string
-	StartTime time.Time
-	BinType   string // second, minute, hour, day
-	Min       float64
-	Max       float64
-	Mean      float64
-	Sum       int64
-	Count     int64
-}
 
 func storeTaxonomy(context appengine.Context, boardKey string, parentNamespace string, childNamespace string) {
 	taxonomy := Taxonomy{}
@@ -73,11 +23,11 @@ func storeTaxonomy(context appengine.Context, boardKey string, parentNamespace s
 }
 
 // decompose a raw Post event into its hierarchical namespaces and write the Metrics to disk
-func storeMetric(context appengine.Context, boardKeyString string, postKey string, data PostBody, ancestor *Metric) (string, error) {
+func storeMetric(context appengine.Context, boardKeyString string, postKey string, data PostBody, parent *Metric) (string, error) {
 	metric := Metric{}
 	metric.Namespace = data.Namespace
-	if ancestor != nil {
-		metric.Namespace = fmt.Sprintf("%s.%s", ancestor.Namespace, metric.Namespace)
+	if parent != nil {
+		metric.Namespace = fmt.Sprintf("%s.%s", parent.Namespace, metric.Namespace)
 	}
 	metadata := ""
 	if len(data.Meta) > 0 {
@@ -88,17 +38,17 @@ func storeMetric(context appengine.Context, boardKeyString string, postKey strin
 	metric.Meta = metadata
 	metric.Start = data.Start
 	metric.End = data.End
+	metric.BoardKey = boardKeyString
+	if parent != nil {
+		metric.ParentKey = parent.Key.Encode()
+	}
 
 	// compose an idempotent key for this data (allows Post data to be digested repeatedly)
 	keyID := fmt.Sprintf("%s:%s:%v:%v", postKey, metric.Namespace, data.Start, data.End)
-	if ancestor == nil {
-		boardKey, _ := datastore.DecodeKey(boardKeyString)
-		metric.Key = datastore.NewKey(context, MetricKind, keyID, 0, boardKey)
-	} else {
-		metric.Key = datastore.NewKey(context, MetricKind, keyID, 0, ancestor.Key)
-	}
+	metric.Key = datastore.NewKey(context, MetricKind, keyID, 0, nil)
 	_, err := datastore.Put(context, metric.Key, &metric)
 	if err != nil {
+		log.Println("Error on Metric Put:", err)
 		context.Errorf("Error on Metric Put:%v", err)
 		return "", err
 	}
@@ -126,9 +76,10 @@ func aggregateSecond(context appengine.Context, t time.Time, boardKeyString stri
 	}
 	// trim fractional second to bin aggregate computation
 	truncTime := t.Truncate(1 * time.Second)
-	metrics, _, err := readMetrics(context, boardKey, namespace, truncTime, 1*time.Second, 0, -1, "")
+	metrics, _, err := readMetrics(context, boardKeyString, namespace, truncTime, 1*time.Second, 0, -1, "")
 	count := len(metrics)
 	if count == 0 {
+		log.Println("no data to aggregate")
 		return
 	}
 
@@ -164,6 +115,7 @@ func aggregateSecond(context appengine.Context, t time.Time, boardKeyString stri
 		Count:     int64(count),
 	}
 	if _, err := datastore.Put(context, aggMetric.Key, &aggMetric); err != nil {
+		log.Println("Error on Metric Put:%v", err)
 		context.Errorf("Error on Metric Put:%v", err)
 		return
 	}
@@ -173,7 +125,6 @@ func aggregateSecond(context appengine.Context, t time.Time, boardKeyString stri
 
 func aggregateMore(context appengine.Context, t time.Time, boardKeyString string, namespace string, binType string) {
 	// Read the AggregateMetric table for a one-minute interval
-	boardKey, _ := datastore.DecodeKey(boardKeyString)
 	var aggregateBinType string
 	aggregateDuration := time.Minute
 	switch binType {
@@ -193,7 +144,7 @@ func aggregateMore(context appengine.Context, t time.Time, boardKeyString string
 
 	// readAggregates reads time backwards, so we jump time forward to read our duration
 	aggregateMetrics, _, err := readAggregates(
-		context, boardKey, namespace, aggregateBinType,
+		context, boardKeyString, namespace, aggregateBinType,
 		truncTime.Add(aggregateDuration), aggregateDuration, -1, "")
 
 	if err != nil {
@@ -222,7 +173,7 @@ func aggregateMore(context appengine.Context, t time.Time, boardKeyString string
 
 	// store values to AggregateMetric entity
 	keyID := fmt.Sprintf("%s:%s:%v:%s", boardKeyString, namespace, truncTime, binType)
-	key := datastore.NewKey(context, AggregateMetricKind, keyID, 0, boardKey)
+	key := datastore.NewKey(context, AggregateMetricKind, keyID, 0, nil)
 	aggMetric := AggregateMetric{
 		Key:       key,
 		BoardKey:  boardKeyString,
@@ -250,8 +201,7 @@ func aggregateMore(context appengine.Context, t time.Time, boardKeyString string
 
 }
 
-// This is the entry point into the deferred context of input digestion
-var digestPost = delay.Func("key", func(c appengine.Context, postKeyString string) {
+func digestPost(c appengine.Context, postKeyString string) {
 	post := Post{}
 	postKey, _ := datastore.DecodeKey(postKeyString)
 	if err := datastore.Get(c, postKey, &post); err != nil {
@@ -264,10 +214,12 @@ var digestPost = delay.Func("key", func(c appengine.Context, postKeyString strin
 	}
 
 	// enter the recursive storage routine
-	boardKeyString := postKey.Parent().Encode()
-	if namespace, err := storeMetric(c, boardKeyString, postKeyString, body, nil); err == nil {
-		storeTaxonomy(c, boardKeyString, "", namespace)
+	if namespace, err := storeMetric(c, post.BoardKey, postKeyString, body, nil); err == nil {
+		storeTaxonomy(c, post.BoardKey, "", namespace)
 	} else {
 		c.Errorf("Error storing Taxonomy:%v", err)
 	}
-})
+}
+
+// This is the entry point into the deferred context of input digestion
+var delayedDigestPost = delay.Func("key", digestPost)

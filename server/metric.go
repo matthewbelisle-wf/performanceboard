@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"github.com/gorilla/mux"
 	"io/ioutil"
+	"log"
 	"net/http"
 	"strconv"
 	"time"
@@ -40,8 +41,8 @@ func readMetricChildren(context appengine.Context, boardKeyString string, parent
 	var allChildren []Metric
 	for _, namespace := range childNamespaces {
 		q := datastore.NewQuery(MetricKind).
-			Filter("Namespace =", namespace).
-			Ancestor(parent.Key)
+			Filter("BoardKey =", boardKeyString).
+			Filter("Namespace =", namespace)
 
 		children := []Metric{}
 		keys, err := q.GetAll(context, &children)
@@ -70,15 +71,15 @@ func readMetricChildren(context appengine.Context, boardKeyString string, parent
 	return allChildren, nil
 }
 
-func readMetrics(context appengine.Context, boardKey *datastore.Key, namespace string,
+func readMetrics(context appengine.Context, boardKey string, namespace string,
 	newestTime time.Time, duration time.Duration, depth int, limit int, cursor string) ([]Metric, string, error) {
 
 	// Duration is used instead of oldestTime to help support unbound queries
 	q := datastore.NewQuery(MetricKind).
+		Filter("BoardKey =", boardKey).
 		Filter("Namespace =", namespace).
 		Filter("Start <=", newestTime).
-		Order("-Start").
-		Ancestor(boardKey)
+		Order("-Start")
 
 	if duration > 0 {
 		oldestTime := newestTime.Add(-duration)
@@ -103,7 +104,7 @@ func readMetrics(context appengine.Context, boardKey *datastore.Key, namespace s
 			break
 		}
 		if depth != 0 { // recursively fetch children
-			if kids, err := readMetricChildren(context, boardKey.Encode(), &metric, (depth - 1)); err == nil {
+			if kids, err := readMetricChildren(context, boardKey, &metric, (depth - 1)); err == nil {
 				if len(kids) > 0 {
 					metric.Children = kids
 				}
@@ -128,14 +129,14 @@ func readMetrics(context appengine.Context, boardKey *datastore.Key, namespace s
 func getMetrics(writer http.ResponseWriter, request *http.Request) {
 	context := appengine.NewContext(request)
 	encodedKey := mux.Vars(request)["board"]
-	boardKey, err := datastore.DecodeKey(encodedKey)
-	if err != nil {
+	if _, err := datastore.DecodeKey(encodedKey); err != nil {
 		http.Error(writer, err.Error(), http.StatusBadRequest)
 		return
 	}
 	namespace := mux.Vars(request)["namespace"]
 
 	// evaluate newest point in request timeline
+	var err error
 	end := time.Now()
 	if endParam := request.FormValue("end"); len(endParam) > 0 {
 		if end, err = time.Parse(time.RFC3339, endParam); err != nil {
@@ -176,7 +177,7 @@ func getMetrics(writer http.ResponseWriter, request *http.Request) {
 
 	cursor := request.FormValue("cursor")
 
-	metrics, cursor, err := readMetrics(context, boardKey, namespace, end, duration, int(depth), int(limit), cursor)
+	metrics, cursor, err := readMetrics(context, encodedKey, namespace, end, duration, int(depth), int(limit), cursor)
 	if err != nil {
 		http.Error(writer, err.Error(), http.StatusBadRequest)
 		return
@@ -198,8 +199,10 @@ func getMetrics(writer http.ResponseWriter, request *http.Request) {
 	response.Write(writer)
 }
 
-// TODO memcache the board entity and validate boardKey against it
-func postMetric(writer http.ResponseWriter, request *http.Request) {
+// Posting metrics is expected to be a frequent task. this handler is expected
+// to extract the body of the post and store it to datastore without inspection.
+// TODO:: can this function be made to return faster?
+func handlePostMetric(writer http.ResponseWriter, request *http.Request) {
 	writer.Header().Add("Access-Control-Allow-Origin", "*")
 	writer.Header().Add("Access-Control-Allow-Methods", "OPTIONS, POST")
 	writer.Header().Add("Access-Control-Allow-Headers", "Content-Type")
@@ -208,24 +211,36 @@ func postMetric(writer http.ResponseWriter, request *http.Request) {
 	encodedBoardKey := mux.Vars(request)["board"]
 	boardKey, err := datastore.DecodeKey(encodedBoardKey)
 	if err != nil || boardKey.Kind() != BoardKind {
+		// TODO memcache the board entity and validate boardKey against it for user ownership
+		log.Println("invalid board key:"+encodedBoardKey, err)
 		http.Error(writer, "Invalid Board key: "+encodedBoardKey, http.StatusBadRequest)
 		return
 	}
-	defer request.Body.Close()
+
 	body, err := ioutil.ReadAll(request.Body)
 	if err != nil {
+		log.Println("request error", err)
 		http.Error(writer, err.Error(), http.StatusBadRequest)
 		return
 	}
+	defer request.Body.Close()
+
+	// a Post object captures the Metrics-tree and stores it as a single entity
 	post := Post{
 		Body:      string(body),
+		BoardKey:  encodedBoardKey,
 		Timestamp: time.Now(),
 	}
 	context := appengine.NewContext(request)
-	post.Key, err = datastore.Put(context, datastore.NewIncompleteKey(context, PostKind, boardKey), &post)
+	post.Key, err = datastore.Put(context, datastore.NewIncompleteKey(context, PostKind, nil), &post)
 	if err != nil {
+		log.Println("error on Put", err)
 		http.Error(writer, err.Error(), http.StatusBadRequest)
 		return
 	}
-	digestPost.Call(context, post.Key.Encode())
+
+	// TODO use delayedDigestPost when digestPost is qualified
+	// decompose the metrics-tree into indevidual metrics, and aggregate them
+	//delayedDigestPost.Call(context, post.Key.Encode())
+	digestPost(context, post.Key.Encode())
 }

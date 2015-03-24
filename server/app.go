@@ -15,7 +15,7 @@ import (
 
 var router *mux.Router
 
-func init() {
+func initRouter() *mux.Router {
 	router = mux.NewRouter()
 	router.HandleFunc("/api/post/{post_key}", getPost).Methods("GET").Name("get_post")
 	router.HandleFunc("/api/post", methodNotAllowed)
@@ -24,15 +24,20 @@ func init() {
 	router.HandleFunc("/api/{board}/{namespace}", getMetrics).Methods("GET").Name("namespace")
 	router.HandleFunc("/api/{board}/{namespace}", methodNotAllowed)
 	router.HandleFunc("/api/{board}", getNamespaces).Methods("GET").Name("board")
-	router.HandleFunc("/api/{board}", postMetric).Methods("POST")
-	router.HandleFunc("/api/{board}", clearBoard).Methods("PUT")
+	router.HandleFunc("/api/{board}", handlePostMetric).Methods("POST")
+	router.HandleFunc("/api/{board}", handleClearBoard).Methods("PUT")
 	router.HandleFunc("/api/{board}", methodNotAllowed)
-	router.HandleFunc("/api/", createBoard).Methods("POST")
-	router.HandleFunc("/api/", listBoards).Methods("GET")
+	router.HandleFunc("/api/", handleCreateBoard).Methods("POST")
+	router.HandleFunc("/api/", handleListBoards).Methods("GET")
 	router.HandleFunc("/api/", methodNotAllowed)
 	router.HandleFunc("/pbjs/{board}", servePBJS).Methods("GET")
 	router.HandleFunc("/{client:.*}", client).Name("client")
-	http.Handle("/", router)
+	return router
+}
+
+func init() {
+	router = initRouter()
+	http.Handle("/", initRouter())
 }
 
 var indexHtml, _ = ioutil.ReadFile("server/templates/index.html")

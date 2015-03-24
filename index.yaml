@@ -11,21 +11,14 @@ indexes:
 # your application using appcfg.py.
 
 - kind: AggregateMetric
-  ancestor: yes
   properties:
   - name: BinType
+  - name: BoardKey
   - name: Namespace
   - name: StartTime
     direction: desc
 
 - kind: Metric
-  ancestor: yes
-  properties:
-  - name: Namespace
-  - name: Start
-    direction: desc
-
-- kind: Taxonomy
   properties:
   - name: BoardKey
   - name: Namespace
